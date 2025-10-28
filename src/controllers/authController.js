@@ -132,4 +132,63 @@ const signupInitiate = async (req, res) => {
 
 }
 
-export { login, signupInitiate };
+const signupVerify = async (req, res) => {
+
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    // 1️⃣ Fetch OTP record
+    const { data: record, error } = await supabase
+      .from("email_verifications")
+      .select("*")
+      .eq("email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+      if (error || !record) {
+        return res.status(404).json({ message: "OTP record not found" });
+      }
+
+      // 2️⃣ Check expiry
+    if (new Date() > new Date(record.expires_at)) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // 3️⃣ Compare OTP hash
+    const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
+    if (otpHash !== record.otp_hash) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // 4️⃣ Insert user into main users table
+    const { error: insertError } = await supabase.from("users").insert([
+      {
+        user_name: record.user_name,
+        email: record.email,
+        mobile: record.mobile,
+        password: record.password_hash,
+      },
+    ]);
+
+    if (insertError) throw insertError;
+
+     // 5️⃣ Mark OTP record as verified
+     await supabase
+     .from("email_verifications")
+     .update({ verified: true })
+     .eq("email", email);
+
+    res.status(201).json({ message: "Signup successful" });
+
+  } catch (error) {
+    console.error("Signup verify error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+export { login, signupInitiate, signupVerify  };

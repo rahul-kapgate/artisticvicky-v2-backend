@@ -86,7 +86,7 @@ export const sendOtpToEmail = async (email, otp) => {
                 —<br/>
                 Best regards,<br/>
                 <strong>Artistic Vicky Team</strong><br/>
-                <a href="https://artisticvicky.in" style="color:#2b4eff;text-decoration:none;">artisticvicky.com</a>
+                <a href="https://artisticvicky.in" style="color:#2b4eff;text-decoration:none;">artisticvicky.in</a>
               </div>
             </div>
           </body>
