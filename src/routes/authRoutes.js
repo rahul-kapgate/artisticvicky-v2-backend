@@ -1,11 +1,11 @@
 import express from "express";
-import { login } from "../controllers/authController.js";
+import { login, signupInitiate} from "../controllers/authController.js";
 // import { verifyToken } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 // ✅ Public Routes
-// router.post("/register", register);
+router.post("/signup/initiate", signupInitiate);
 router.post("/login", login);
 // router.post("/refresh-token", refreshToken);
 
