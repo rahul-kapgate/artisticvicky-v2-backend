@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import authRoutes from "./routes/authRoutes.js";
+import courseRoutes from './routes/courseRoutes.js'
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(cookieParser());
 
 // 🔗 Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/course", courseRoutes);
 
 // 🧱 Error Handler
 // app.use(errorHandler);

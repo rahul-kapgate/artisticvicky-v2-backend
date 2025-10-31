@@ -21,7 +21,7 @@ export const verifyToken = (req, res, next) => {
       }
 
       // Attach user data to request object
-      req.user = decoded;
+      req.user = decoded; // { id, is_admin }
       next();
     });
   } catch (error) {

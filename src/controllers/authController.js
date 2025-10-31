@@ -44,13 +44,13 @@ const login = async (req, res, next) => {
 
     // 5️⃣ Generate JWT tokens
     const accessToken = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: user.id, is_admin: user.is_admin },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: "3h" }
     );
 
     const refreshToken = jwt.sign(
-      { id: user._id },
+      { id: user.id, is_admin: user.is_admin },
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "2d" }
     );
@@ -58,7 +58,7 @@ const login = async (req, res, next) => {
     // 6️⃣ Send response
     res.status(200).json({
       message: "Login successful",
-      user: { id: user._id, email: user.email, mobile: user.mobile },
+      user: { id: user._id, email: user.email, mobile: user.mobile, is_admin: user.is_admin, },
       accessToken,
       refreshToken,
     });
@@ -207,7 +207,7 @@ const refreshToken = async (req, res) => {
 
       // Generate new access token
       const accessToken = jwt.sign(
-        { id: decoded.id, role: decoded.role },
+        { id: decoded.id, is_admin: decoded.is_admin },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "3h" }
       );
