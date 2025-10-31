@@ -47,4 +47,66 @@ const createCourse = async (req, res) => {
     }
 };
 
-export { createCourse}
+
+const getAllCourses = async (req, res) => {
+
+    try {
+        const { data: courses, error } = await supabase
+            .from("courses")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        res.status(200).json({
+            success: true,
+            message: "Courses fetched successfully",
+            count: courses.length,
+            data: courses,
+        });
+
+    } catch (error) {
+        console.error("Get all courses error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+const getCourseById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: course, error } = await supabase
+            .from("courses")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (error) {
+            if (error.code === "PGRST116") {
+                // PostgREST code for "No rows found"
+                return res.status(404).json({
+                    success: false,
+                    message: "Course not found",
+                });
+            }
+            throw error;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Course fetched successfully",
+            data: course,
+        });
+    } catch (error) {
+        console.error("Get course by ID error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+export { createCourse, getAllCourses, getCourseById }
