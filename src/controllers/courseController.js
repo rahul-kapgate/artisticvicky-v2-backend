@@ -1,14 +1,47 @@
 import { supabase } from "../config/supabaseClient.js";
+import multer from "multer";
+import fs from "fs";
+
+const upload = multer({ dest: "uploads/" });
 
 const createCourse = async (req, res) => {
 
     try {
-        const { course_name, description, price, image, category, level, language, duration, is_published, tags } = req.body;
+        const { course_name, description, price, category, level, language, duration, is_published, tags } = req.body;
+
+        const file = req.file;
 
         // Validate required fields
-        if (!course_name || !description || !price || !image) {
+        if (!course_name || !description || !price) {
             return res.status(400).json({ success: false, message: "All required fields must be provided" });
         }
+
+        if (!file) {
+            return res.status(400).json({ success: false, message: "Course image is required" });
+        }
+
+        // ✅ Upload image to Supabase Storage
+        const filePath = `courses/${Date.now()}_${file.originalname}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("course-images")
+            .upload(filePath, fs.createReadStream(file.path), {
+                cacheControl: "3600",
+                upsert: false,
+                contentType: file.mimetype,
+                duplex: "half",
+            });
+
+        fs.unlinkSync(file.path); // cleanup temp file
+
+        if (uploadError) throw uploadError;
+
+        // ✅ Get public URL
+        const { data: publicUrlData } = supabase.storage
+            .from("course-images")
+            .getPublicUrl(filePath);
+
+        const imageUrl = publicUrlData.publicUrl;
 
         // Insert into Supabase
         const { data, error } = await supabase
@@ -18,7 +51,7 @@ const createCourse = async (req, res) => {
                     course_name,
                     description,
                     price,
-                    image,
+                    image: imageUrl,
                     category,
                     level,
                     language,
@@ -46,7 +79,6 @@ const createCourse = async (req, res) => {
         });
     }
 };
-
 
 const getAllCourses = async (req, res) => {
 
@@ -109,4 +141,4 @@ const getCourseById = async (req, res) => {
     }
 };
 
-export { createCourse, getAllCourses, getCourseById }
+export { upload, createCourse, getAllCourses, getCourseById }
