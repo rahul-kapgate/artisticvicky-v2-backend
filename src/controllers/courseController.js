@@ -141,4 +141,36 @@ const getCourseById = async (req, res) => {
     }
 };
 
-export { upload, createCourse, getAllCourses, getCourseById }
+const getEnrolledCourses = async (req, res) => {
+
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return res.status(400).json({ success: false, message: "User Not found" });
+        }
+
+        const { data: courses, error } = await supabase
+            .from("courses")
+            .select("*")
+            .contains("students_enrolled", [Number(userId)])
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        res.status(200).json({
+            success: true,
+            message: "Enrolled courses fetched successfully",
+            count: courses.length,
+            data: courses,
+        });
+    } catch (error) {
+        console.error("Get enrolled courses error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+export { upload, createCourse, getAllCourses, getCourseById, getEnrolledCourses }
