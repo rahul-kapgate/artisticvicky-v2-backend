@@ -9,6 +9,7 @@ dotenv.config();
 
 import authRoutes from "./routes/authRoutes.js";
 import courseRoutes from './routes/courseRoutes.js'
+import adminRoutes from "./routes/adminRoutes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -27,6 +28,7 @@ app.use(cookieParser());
 // 🔗 Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/course", courseRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 🧱 Error Handler
 // app.use(errorHandler);
