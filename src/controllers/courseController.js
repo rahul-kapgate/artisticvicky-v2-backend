@@ -173,4 +173,134 @@ const getEnrolledCourses = async (req, res) => {
     }
 };
 
+export const updateCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            course_name,
+            description,
+            price,
+            category,
+            level,
+            language,
+            duration,
+            is_published,
+            tags,
+        } = req.body;
+
+        const { data: existingCourse, error: fetchError } = await supabase
+            .from("courses")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (fetchError || !existingCourse)
+            return res
+                .status(404)
+                .json({ success: false, message: "Course not found" });
+
+        let imageUrl = existingCourse.image;
+
+        // ✅ Upload new image if provided
+        if (req.file) {
+            // Optional: Delete old image
+            if (existingCourse.image) {
+                const oldPath = existingCourse.image.split("course-images/")[1];
+                if (oldPath)
+                    await supabase.storage.from("course-images").remove([oldPath]);
+            }
+
+            const filePath = `courses/${Date.now()}_${req.file.originalname}`;
+            const { error: uploadError } = await supabase.storage
+                .from("course-images")
+                .upload(filePath, fs.createReadStream(req.file.path), {
+                    cacheControl: "3600",
+                    upsert: false,
+                    contentType: req.file.mimetype,
+                    duplex: "half",
+                });
+
+            fs.unlinkSync(req.file.path);
+            if (uploadError) throw uploadError;
+
+            const { data: publicUrlData } = supabase.storage
+                .from("course-images")
+                .getPublicUrl(filePath);
+            imageUrl = publicUrlData.publicUrl;
+        }
+
+        const { data, error } = await supabase
+            .from("courses")
+            .update({
+                course_name,
+                description,
+                price,
+                category,
+                level,
+                language,
+                duration,
+                is_published,
+                tags,
+                image: imageUrl,
+                updated_at: new Date(),
+            })
+            .eq("id", id)
+            .select();
+
+        if (error) throw error;
+
+        res.status(200).json({
+            success: true,
+            message: "Course updated successfully",
+            course: data[0],
+        });
+    } catch (error) {
+        console.error("Update course error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Server error while updating course",
+        });
+    }
+};
+
+
+export const deleteCourse = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: course, error: fetchError } = await supabase
+            .from("courses")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (fetchError || !course)
+            return res
+                .status(404)
+                .json({ success: false, message: "Course not found" });
+
+        // ✅ Remove image from storage
+        if (course.image) {
+            const imagePath = course.image.split("course-images/")[1];
+            if (imagePath)
+                await supabase.storage.from("course-images").remove([imagePath]);
+        }
+
+        const { error } = await supabase.from("courses").delete().eq("id", id);
+        if (error) throw error;
+
+        res.status(200).json({
+            success: true,
+            message: "Course deleted successfully",
+        });
+    } catch (error) {
+        console.error("Delete course error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Server error while deleting course",
+        });
+    }
+};
+
+
 export { upload, createCourse, getAllCourses, getCourseById, getEnrolledCourses }
