@@ -10,7 +10,8 @@ router.post(
     "/add-course",
     verifyToken,
     isAdmin,
-    upload.single("image"),
+    // upload.single("image"),
+    upload.single("file"),
     createCourse
   );
   
