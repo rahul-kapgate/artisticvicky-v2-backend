@@ -131,3 +131,56 @@ export const enrollUserInCourse = async (req, res) => {
   }
 };
 
+// ✅ Dashboard summary API
+export const getDashboardStats = async (req, res) => {
+  try {
+    // Count total courses
+    const { count: courseCount, error: courseError } = await supabase
+      .from("courses")
+      .select("id", { count: "exact", head: true });
+
+    if (courseError) throw courseError;
+
+    // Count total users
+    const { count: userCount, error: userError } = await supabase
+      .from("users")
+      .select("id", { count: "exact", head: true });
+
+    if (userError) throw userError;
+
+    // Calculate total enrollments across all courses
+    const { data: courses, error: enrollError } = await supabase
+      .from("courses")
+      .select("students_enrolled");
+
+    if (enrollError) throw enrollError;
+
+    let totalEnrollments = 0;
+    if (courses?.length) {
+      totalEnrollments = courses.reduce((acc, c) => {
+        if (Array.isArray(c.students_enrolled)) {
+          return acc + c.students_enrolled.length;
+        }
+        return acc;
+      }, 0);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Dashboard stats fetched successfully",
+      data: {
+        totalCourses: courseCount || 0,
+        totalUsers: userCount || 0,
+        totalEnrollments,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching dashboard stats",
+    });
+  }
+};
+
+
