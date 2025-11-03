@@ -139,4 +139,27 @@ export const getDashboardStats = async (req, res) => {
   }
 };
 
+export const getAllUsers = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, user_name, email, mobile, is_admin, created_at")
+      .order("id", { ascending: true });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      count: data.length,
+      users: data,
+    });
+  } catch (err) {
+    console.error("Error fetching users:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+    });
+  }
+};
+
 

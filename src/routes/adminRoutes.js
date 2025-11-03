@@ -1,5 +1,5 @@
 import express from "express";
-import { getUsersWithCourses, enrollUserInCourse, getDashboardStats } from "../controllers/adminController.js";
+import { getUsersWithCourses, enrollUserInCourse, getDashboardStats, getAllUsers } from "../controllers/adminController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
 
@@ -10,5 +10,6 @@ router.post("/enroll", verifyToken, isAdmin, enrollUserInCourse);
 
 router.get("/dashboard-stats", verifyToken, isAdmin, getDashboardStats);
 
+router.get("/all-users", verifyToken, isAdmin, getAllUsers);
 
 export default router;
