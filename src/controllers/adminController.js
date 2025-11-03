@@ -1,5 +1,4 @@
 import { supabase } from "../config/supabaseClient.js";
-import fs from "fs";
 
 // ✅ Get all users and their enrolled courses
 export const getUsersWithCourses = async (req, res) => {
@@ -87,6 +86,50 @@ export const enrollUserInCourse = async (req, res) => {
   }
 };
 
+export const unenrollUserFromCourse = async (req, res) => {
+  try {
+    const { userId, courseId } = req.body;
+
+    if (!userId || !courseId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId and courseId are required",
+      });
+    }
+
+    const { data: course, error } = await supabase
+      .from("courses")
+      .select("students_enrolled")
+      .eq("id", courseId)
+      .single();
+
+    if (error) throw error;
+
+    const updatedArray = Array.isArray(course.students_enrolled)
+      ? course.students_enrolled.filter((id) => id !== userId)
+      : [];
+
+    const { error: updateError } = await supabase
+      .from("courses")
+      .update({ students_enrolled: updatedArray })
+      .eq("id", courseId);
+
+    if (updateError) throw updateError;
+
+    res.status(200).json({
+      success: true,
+      message: `User ${userId} unenrolled from course ${courseId}`,
+    });
+  } catch (error) {
+    console.error("Unenroll user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
 // ✅ Dashboard summary API
 export const getDashboardStats = async (req, res) => {
   try {
@@ -161,5 +204,7 @@ export const getAllUsers = async (req, res) => {
     });
   }
 };
+
+
 
 
