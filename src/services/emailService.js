@@ -8,9 +8,9 @@ export const sendOtpToEmail = async (email, otp) => {
     await axios.post(
       "https://api.brevo.com/v3/smtp/email",
       {
-        sender: { name: "Artistic Vicky", email: "artisticvicky369@gmail.com" },
+        sender: { name: "Artistic Vickey", email: "artisticvicky369@gmail.com" },
         to: [{ email }],
-        subject: "Verification Code - Artistic Vicky",
+        subject: "Verification Code - Artistic Vickey",
         htmlContent: `
           <!DOCTYPE html>
           <html lang="en">
@@ -86,7 +86,7 @@ export const sendOtpToEmail = async (email, otp) => {
                 —<br/>
                 Best regards,<br/>
                 <strong>Artistic Vicky Team</strong><br/>
-                <a href="https://artisticvicky.in" style="color:#2b4eff;text-decoration:none;">artisticvicky.in</a>
+                <a href="https://artisticvickey.in" style="color:#2b4eff;text-decoration:none;">artisticvickey.in</a>
               </div>
             </div>
           </body>
