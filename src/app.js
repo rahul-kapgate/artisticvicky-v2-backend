@@ -10,6 +10,7 @@ dotenv.config();
 import authRoutes from "./routes/authRoutes.js";
 import courseRoutes from './routes/courseRoutes.js'
 import adminRoutes from "./routes/adminRoutes.js";
+import mockRoutes from "./routes/mockRoutes.js"
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -29,6 +30,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/course", courseRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/mock-test", mockRoutes)
 
 // 🧱 Error Handler
 // app.use(errorHandler);
