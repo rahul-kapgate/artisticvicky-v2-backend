@@ -139,3 +139,65 @@ export const getMockAttemptsByStudent = async (req, res) => {
     });
   }
 };
+
+
+// Get all question details for a specific submitted attempt
+export const getMockAttemptDetails = async (req, res) => {
+  try {
+    const { attempt_id } = req.params;
+
+    // 1️⃣ Fetch the attempt first
+    const { data: attempt, error: attemptError } = await supabase
+      .from("mock_attempts")
+      .select("id, student_id, course_id, answers, score, submitted_at")
+      .eq("id", attempt_id)
+      .single();
+
+    if (attemptError || !attempt) {
+      return res.status(404).json({
+        success: false,
+        message: "Attempt not found",
+      });
+    }
+
+    // 2️⃣ Extract all question IDs from answers array
+    const questionIds = attempt.answers.map((a) => a.question_id);
+
+    // 3️⃣ Fetch those question details
+    const { data: questions, error: questionsError } = await supabase
+      .from("mock_questions")
+      .select("id, question_text, options, correct_option_id, image_url, difficulty")
+      .in("id", questionIds);
+
+    if (questionsError) throw questionsError;
+
+    // 4️⃣ Merge selected options with questions
+    const mergedQuestions = questions.map((q) => {
+      const ans = attempt.answers.find((a) => a.question_id === q.id);
+      return {
+        ...q,
+        selected_option_id: ans ? ans.selected_option_id : null,
+        is_correct: ans ? ans.selected_option_id === q.correct_option_id : false,
+      };
+    });
+
+    // 5️⃣ Respond with full details
+    res.status(200).json({
+      success: true,
+      attempt_id: attempt.id,
+      student_id: attempt.student_id,
+      course_id: attempt.course_id,
+      score: attempt.score,
+      total_questions: mergedQuestions.length,
+      submitted_at: attempt.submitted_at,
+      data: mergedQuestions,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching mock attempt details:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch attempt details",
+      error: err.message,
+    });
+  }
+};
