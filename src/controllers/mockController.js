@@ -97,19 +97,38 @@ export const submitMockAttempt = async (req, res) => {
 export const getMockAttemptsByStudent = async (req, res) => {
   try {
     const { student_id } = req.params;
+    const { start_date, end_date } = req.query;
 
-    const { data, error } = await supabase
+    // Base query
+    let query = supabase
       .from("mock_attempts")
       .select("*, courses(course_name)")
       .eq("student_id", student_id)
       .order("submitted_at", { ascending: false });
 
+    // ✅ Apply date filters if provided
+    if (start_date) {
+      query = query.gte("submitted_at", new Date(start_date).toISOString());
+    }
+    if (end_date) {
+      // Add one day to include full end_date
+      const endDate = new Date(end_date);
+      endDate.setDate(endDate.getDate() + 1);
+      query = query.lte("submitted_at", endDate.toISOString());
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
 
     res.status(200).json({
       success: true,
-      count: data.length,
+      count: data?.length || 0,
       data,
+      appliedFilters: {
+        start_date: start_date || null,
+        end_date: end_date || null,
+      },
     });
   } catch (err) {
     console.error("❌ Error fetching mock attempts:", err.message);
