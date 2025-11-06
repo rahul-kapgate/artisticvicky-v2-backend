@@ -11,6 +11,7 @@ import authRoutes from "./routes/authRoutes.js";
 import courseRoutes from './routes/courseRoutes.js'
 import adminRoutes from "./routes/adminRoutes.js";
 import mockRoutes from "./routes/mockRoutes.js"
+import userRoutes from "./routes/userRoutes.js"
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/course", courseRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/mock-test", mockRoutes)
+app.use("/api/user", userRoutes)
 
 // 🧱 Error Handler
 // app.use(errorHandler);
