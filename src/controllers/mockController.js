@@ -101,7 +101,7 @@ export const submitMockAttempt = async (req, res) => {
       success: true,
       message: "Mock test submitted successfully",
       score,
-      totalQuestions: questions.length,
+      totalQuestions: 40,
       data,
     });
   } catch (err) {
