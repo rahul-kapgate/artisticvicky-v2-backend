@@ -1,22 +1,43 @@
 import { supabase } from "../config/supabaseClient.js";
 
 // Get random 40 questions for a given course
+// Get random 40 questions for a given course
 export const getMockQuestions = async (req, res) => {
   try {
     const { course_id } = req.params;
 
-    const { data: questions, error } = await supabase
-      .from("mock_questions")
-      .select("*")
-      .eq("course_id", course_id);
+    const limit = 1000;
+    let from = 0;
+    let allQuestions = [];
 
-    if (error) throw error;
+    // Fetch in batches of 1000 until no more rows
+    while (true) {
+      const { data, error } = await supabase
+        .from("mock_questions")
+        .select("*")
+        .eq("course_id", course_id)
+        .range(from, from + limit - 1);
 
-    // shuffle and limit 40
-    const shuffled = questions.sort(() => 0.5 - Math.random());
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      allQuestions = allQuestions.concat(data);
+      from += limit;
+    }
+
+
+    if (allQuestions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No questions found for this course",
+      });
+    }
+
+    // Shuffle and select 40 random questions
+    const shuffled = allQuestions.sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, 40);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       totalQuestions: selected.length,
       data: selected,
