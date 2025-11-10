@@ -1,7 +1,6 @@
 import { supabase } from "../config/supabaseClient.js";
 
 // Get random 40 questions for a given course
-// Get random 40 questions for a given course
 export const getMockQuestions = async (req, res) => {
   try {
     const { course_id } = req.params;
