@@ -144,34 +144,73 @@ const getCourseById = async (req, res) => {
 const getEnrolledCourses = async (req, res) => {
 
     try {
-        const { userId } = req.params;
-
-        if (!userId) {
-            return res.status(400).json({ success: false, message: "User Not found" });
-        }
-
-        const { data: courses, error } = await supabase
-            .from("courses")
-            .select("*")
-            .contains("students_enrolled", [Number(userId)])
-            .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        res.status(200).json({
-            success: true,
-            message: "Enrolled courses fetched successfully",
-            count: courses.length,
-            data: courses,
+      const { userId } = req.params;
+  
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User not found",
         });
+      }
+  
+      // 1️⃣ Fetch enrolled courses
+      const { data: courses, error: courseError } = await supabase
+        .from("courses")
+        .select("id, course_name, description, price, image, category, level, language, duration, is_published, created_by, students_enrolled, rating, tags, created_at, updated_at")
+        .contains("students_enrolled", [Number(userId)])
+        .order("created_at", { ascending: false });
+  
+      if (courseError) throw courseError;
+  
+      if (!courses || courses.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "No enrolled courses found",
+          count: 0,
+          data: [],
+        });
+      }
+  
+      // 2️⃣ Get all course IDs
+      const courseIds = courses.map((c) => c.id);
+  
+      // 3️⃣ Fetch sections for those courses
+      const { data: sectionsData, error: sectionError } = await supabase
+        .from("course_sections")
+        .select("course_id, section_type")
+        .in("course_id", courseIds);
+  
+      if (sectionError) throw sectionError;
+  
+      // 4️⃣ Map sections to corresponding courses
+      const sectionsMap = sectionsData.reduce((acc, row) => {
+        if (!acc[row.course_id]) acc[row.course_id] = [];
+        acc[row.course_id].push(row.section_type);
+        return acc;
+      }, {});
+  
+      // 5️⃣ Attach sections to each course
+      const coursesWithSections = courses.map((course) => ({
+        ...course,
+        sections: sectionsMap[course.id] || [],
+      }));
+  
+      // 6️⃣ Respond with final data
+      res.status(200).json({
+        success: true,
+        message: "Enrolled courses fetched successfully",
+        count: coursesWithSections.length,
+        data: coursesWithSections,
+      });
     } catch (error) {
-        console.error("Get enrolled courses error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
+      console.error("❌ Get enrolled courses error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
-};
+  };
+  
 
 export const updateCourse = async (req, res) => {
     try {
