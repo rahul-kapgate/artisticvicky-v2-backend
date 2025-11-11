@@ -27,7 +27,7 @@ const login = async (req, res, next) => {
       .eq(isEmail ? "email" : "mobile", identifier)
       .limit(1);
 
-    console.log(users)
+    console.log(users[0].user_name)
 
     if (error) throw error;
     const user = users?.[0];
