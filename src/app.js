@@ -13,6 +13,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import mockRoutes from "./routes/mockRoutes.js"
 import userRoutes from "./routes/userRoutes.js"
 import pyqRoutes from "./routes/pyqRoutes.js"
+import resourceRoutes from "./routes/resourceRoutes.js"
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/mock-test", mockRoutes)
 app.use("/api/user", userRoutes)
 app.use("/api/pyq-mock-test", pyqRoutes)
+app.use("/api/resource", resourceRoutes)
 
 // 🧱 Error Handler
 // app.use(errorHandler);
