@@ -171,7 +171,7 @@ const getEnrolledCourses = async (req, res) => {
             .from("courses")
             .select("id, course_name, description, price, image, category, level, language, duration, is_published, created_by, students_enrolled, rating, tags, created_at, updated_at")
             .contains("students_enrolled", [Number(userId)])
-            .order("created_at", { ascending: ture });
+            .order("created_at", { ascending: true });
 
         if (courseError) throw courseError;
 
