@@ -52,7 +52,7 @@ const login = async (req, res, next) => {
     const refreshToken = jwt.sign(
       { id: user.id, is_admin: user.is_admin },
       process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "2d" }
+      { expiresIn: "7d" }
     );
 
     // 6️⃣ Send response
