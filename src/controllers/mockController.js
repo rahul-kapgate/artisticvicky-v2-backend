@@ -24,7 +24,6 @@ export const getMockQuestions = async (req, res) => {
       from += limit;
     }
 
-
     if (allQuestions.length === 0) {
       return res.status(404).json({
         success: false,
@@ -32,14 +31,56 @@ export const getMockQuestions = async (req, res) => {
       });
     }
 
-    // Shuffle and select 40 random questions
-    const shuffled = allQuestions.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 40);
+    // ✅ Need at least 40 questions overall
+    if (allQuestions.length < 40) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Not enough questions to generate a mock test. At least 40 questions are required.",
+        totalAvailable: allQuestions.length,
+      });
+    }
+
+    // Split into questions with and without images
+    const questionsWithImage = allQuestions.filter(
+      (q) => q.image_url && q.image_url.trim() !== ""
+    );
+    const questionsWithoutImage = allQuestions.filter(
+      (q) => !q.image_url || q.image_url.trim() === ""
+    );
+
+    // Helper: pick N random unique items from an array
+    const pickRandom = (arr, count) => {
+      const clone = [...arr];
+      for (let i = clone.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [clone[i], clone[j]] = [clone[j], clone[i]];
+      }
+      return clone.slice(0, count);
+    };
+
+    // 1️⃣ Pick 10 random questions with images
+    const selectedWithImage = pickRandom(questionsWithImage, 10);
+
+    // 2️⃣ Pick remaining (40 - 10 = 30) from the rest (with or without image)
+    const selectedWithImageIds = new Set(selectedWithImage.map((q) => q.id));
+    const remainingPool = allQuestions.filter(
+      (q) => !selectedWithImageIds.has(q.id)
+    );
+
+    const remainingNeeded = 40 - selectedWithImage.length;
+    const selectedOthers = pickRandom(remainingPool, remainingNeeded);
+
+    let finalQuestions = [...selectedWithImage, ...selectedOthers];
+
+    // 3️⃣ Shuffle final list so image questions are mixed, not all at top
+    finalQuestions = pickRandom(finalQuestions, finalQuestions.length);
 
     return res.status(200).json({
       success: true,
-      totalQuestions: selected.length,
-      data: selected,
+      totalQuestions: finalQuestions.length,
+      totalWithImage: selectedWithImage.length,
+      data: finalQuestions,
     });
   } catch (err) {
     console.error("❌ Error fetching mock questions:", err.message);
@@ -50,6 +91,7 @@ export const getMockQuestions = async (req, res) => {
     });
   }
 };
+
 
 // Submit a mock test attempt and auto-evaluate score
 export const submitMockAttempt = async (req, res) => {
