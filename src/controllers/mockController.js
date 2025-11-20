@@ -94,6 +94,7 @@ export const getMockQuestions = async (req, res) => {
 
 
 // Submit a mock test attempt and auto-evaluate score
+// Submit a mock test attempt and auto-evaluate score
 export const submitMockAttempt = async (req, res) => {
   try {
     const { course_id, answers } = req.body;
@@ -106,35 +107,52 @@ export const submitMockAttempt = async (req, res) => {
       });
     }
 
-    // Fetch correct options for this course
+    const TOTAL_QUESTIONS_PER_TEST = 40; // each question = 1 mark
+
+    // 🔹 Extract unique question IDs from submitted answers
+    const questionIds = [
+      ...new Set(answers.map((a) => Number(a.question_id))),
+    ].filter((id) => !Number.isNaN(id));
+
+    if (questionIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid question IDs in answers",
+      });
+    }
+
+    // 🔹 Fetch ONLY those questions (max 40, no 1000-row issue)
     const { data: questions, error: fetchError } = await supabase
       .from("mock_questions")
       .select("id, correct_option_id")
-      .eq("course_id", course_id);
+      .eq("course_id", course_id)
+      .in("id", questionIds);
 
     if (fetchError) throw fetchError;
 
-    // Build a map: key = stringified id (to avoid type issues)
+    // 🔹 Build a map keyed by stringified ID to avoid bigint vs number issues
     const questionMap = new Map(
-      questions.map((q) => [String(q.id), q])
+      (questions || []).map((q) => [String(q.id), q])
     );
 
-    // Evaluate score
+    // 🔹 Evaluate score
     let score = 0;
 
-    answers.forEach((ans) => {
+    for (const ans of answers) {
       const q = questionMap.get(String(ans.question_id));
-      if (!q) return; // question not found, skip safely
+      if (!q) continue; // question not found (shouldn't happen now, but safe)
 
       const correctOptionId = Number(q.correct_option_id);
       const selectedOptionId = Number(ans.selected_option_id);
 
-      if (correctOptionId === selectedOptionId) {
-        score++;
+      if (!Number.isNaN(correctOptionId) && !Number.isNaN(selectedOptionId)) {
+        if (correctOptionId === selectedOptionId) {
+          score++;
+        }
       }
-    });
+    }
 
-    // Save mock attempt
+    // 🔹 Save mock attempt
     const { data, error } = await supabase
       .from("mock_attempts")
       .insert([
@@ -151,22 +169,23 @@ export const submitMockAttempt = async (req, res) => {
 
     if (error) throw error;
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Mock test submitted successfully",
       score,
-      totalQuestions: answers.length, // use actual number attempted
+      totalQuestions: TOTAL_QUESTIONS_PER_TEST, // always 40
       data,
     });
   } catch (err) {
     console.error("❌ Error submitting mock attempt:", err.message);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to submit mock test",
       error: err.message,
     });
   }
 };
+
 
 
 // Get all mock attempts for a specific student
