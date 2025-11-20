@@ -106,7 +106,7 @@ export const submitMockAttempt = async (req, res) => {
       });
     }
 
-    // Fetch correct options
+    // Fetch correct options for this course
     const { data: questions, error: fetchError } = await supabase
       .from("mock_questions")
       .select("id, correct_option_id")
@@ -114,11 +114,24 @@ export const submitMockAttempt = async (req, res) => {
 
     if (fetchError) throw fetchError;
 
+    // Build a map: key = stringified id (to avoid type issues)
+    const questionMap = new Map(
+      questions.map((q) => [String(q.id), q])
+    );
+
     // Evaluate score
     let score = 0;
+
     answers.forEach((ans) => {
-      const q = questions.find((q) => q.id === ans.question_id);
-      if (q && q.correct_option_id === ans.selected_option_id) score++;
+      const q = questionMap.get(String(ans.question_id));
+      if (!q) return; // question not found, skip safely
+
+      const correctOptionId = Number(q.correct_option_id);
+      const selectedOptionId = Number(ans.selected_option_id);
+
+      if (correctOptionId === selectedOptionId) {
+        score++;
+      }
     });
 
     // Save mock attempt
@@ -142,7 +155,7 @@ export const submitMockAttempt = async (req, res) => {
       success: true,
       message: "Mock test submitted successfully",
       score,
-      totalQuestions: 40,
+      totalQuestions: answers.length, // use actual number attempted
       data,
     });
   } catch (err) {
@@ -154,6 +167,7 @@ export const submitMockAttempt = async (req, res) => {
     });
   }
 };
+
 
 // Get all mock attempts for a specific student
 export const getMockAttemptsByStudent = async (req, res) => {
