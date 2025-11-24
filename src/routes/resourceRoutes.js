@@ -5,6 +5,7 @@ import {
   getAllResources,
   updateResource,
   deleteResource,
+  streamResourceFile,
 } from "../controllers/resourceController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
@@ -34,5 +35,8 @@ router.delete("/:id", verifyToken, isAdmin, deleteResource);
 
 // ✅ Public route — anyone can view
 router.get("/all-resources", verifyToken, getAllResources);
+
+// ✅ Authenticated users can stream the actual file
+router.get("/:id/file", verifyToken, streamResourceFile);
 
 export default router;
