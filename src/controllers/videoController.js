@@ -80,7 +80,7 @@ export const getVideos = async (req, res) => {
         let query = supabase
             .from("video_lectures")
             .select("id, title, description, youtube_url, thumbnail_url, duration, is_free, section_id, created_at")
-            .order("created_at", { ascending: false });
+            .order("created_at", { ascending: true });
 
         if (section_id) query = query.eq("section_id", section_id);
 

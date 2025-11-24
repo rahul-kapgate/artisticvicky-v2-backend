@@ -58,7 +58,7 @@ export const getSectionsWithVideos = async (req, res) => {
           created_at
         )
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: true });
 
     if (error) throw error;
 
