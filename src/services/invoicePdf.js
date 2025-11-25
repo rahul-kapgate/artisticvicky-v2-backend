@@ -1,227 +1,206 @@
-import PDFDocument from "pdfkit";
-import { Buffer } from "node:buffer"; // (optional in Node 18+, but safe)
+import PDFDocument from 'pdfkit';
+import { Buffer } from 'node:buffer';
 
+/**
+ * Generate a nicely formatted invoice PDF as a Buffer.  This function
+ * improves upon the original implementation by organising the page
+ * into clear sections, placing the billing details and invoice
+ * metadata side‑by‑side, and drawing subtle borders around key areas
+ * like the payment summary.  Headings use a consistent typographic
+ * hierarchy and spacing has been tuned so that the document reads
+ * comfortably on A4 paper.  Callers can await the returned promise
+ * to receive a Node.js Buffer containing the PDF data.
+ *
+ * @param {Object} invoiceData – details required to populate the invoice
+ * @param {Object} invoiceData.user – the billed user's information
+ * @param {string} invoiceData.user.name – full name of the recipient
+ * @param {string} invoiceData.user.email – email address of the recipient
+ * @param {Object} invoiceData.course – course details
+ * @param {string} invoiceData.course.name – name of the course
+ * @param {number} [invoiceData.course.listedPrice] – optional list price
+ * @param {string} invoiceData.invoiceNumber – unique invoice identifier
+ * @param {string} invoiceData.issueDate – ISO formatted issue date
+ * @param {number} invoiceData.amount – amount billed
+ * @param {string} [invoiceData.notes] – optional free‑form notes
+ * @returns {Promise<Buffer>} a promise resolving to a Buffer containing the PDF
+ */
 export function generateInvoicePdfBuffer(invoiceData) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    // Create a new document with sensible defaults for A4
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
-    doc.on("data", (chunk) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
+    // Format numbers into Indian rupees using a prefix rather than the
+    // rupee symbol.  Some fonts bundled with PDFKit do not support
+    // Unicode currency glyphs, so using "Rs." ensures correct output.
+    const formatCurrency = (value) => `Rs. ${Number(value ?? 0).toFixed(2)}`;
 
-    // ✅ Use "Rs." to avoid ₹ font issues
-    const formatCurrency = (value) =>
-      `Rs. ${Number(value ?? 0).toFixed(2)}`;
-
-    // ===== HEADER / BRANDING =====
+    // ===== HEADER =====
     doc
-      .fontSize(18)
-      .font("Helvetica-Bold")
-      .fillColor("#111827")
-      .text("Artistic Vickey", { align: "left" });
-
+      .fontSize(20)
+      .font('Helvetica-Bold')
+      .fillColor('#111827')
+      .text('Artistic Vickey');
     doc
-      .moveDown(0.2)
       .fontSize(10)
-      .font("Helvetica")
-      .fillColor("#4B5563")
-      .text("Maharashtra Applied Arts & Crafts CET Coaching", {
-        align: "left",
-      })
-      .text("https://artisticvickey.in", {
-        align: "left",
-        link: "https://artisticvickey.in",
+      .font('Helvetica')
+      .fillColor('#4B5563')
+      .text('https://artisticvickey.in', {
+        link: 'https://artisticvickey.in',
         underline: false,
-      })
-      .moveDown(0.5);
+      });
 
-    // INVOICE label on the right
-    const headerY = doc.y;
-    doc
-      .fontSize(22)
-      .font("Helvetica-Bold")
-      .fillColor("#111827")
-      .text("INVOICE", 0, headerY, { align: "right" });
+    // Add a small amount of breathing room below the header
+    doc.moveDown(1);
 
-    // Separator line
-    doc
-      .moveDown(0.5)
-      .moveTo(50, doc.y)
-      .lineTo(545, doc.y)
-      .strokeColor("#E5E7EB")
-      .lineWidth(1)
-      .stroke()
-      .moveDown(1);
+    /**
+     * Two column layout: left column for recipient information, right
+     * column for invoice metadata.  We compute the available width
+     * within the page margins and split it in half.  Setting the y
+     * positions explicitly ensures both columns start at the same
+     * vertical alignment.
+     */
+    const leftX = doc.x; // should be margin
+    const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const columnWidth = contentWidth / 2;
+    const yStart = doc.y;
 
-    // ===== BILL TO =====
+    // ===== BILL TO COLUMN =====
     doc
       .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#111827")
-      .text("Bill To:", { underline: true })
-      .moveDown(0.3);
-
+      .font('Helvetica-Bold')
+      .fillColor('#111827')
+      .text('Bill To:', leftX, yStart, { underline: true });
     doc
       .fontSize(11)
-      .font("Helvetica")
-      .fillColor("#111827")
+      .font('Helvetica')
+      .fillColor('#111827')
+      .moveDown(0.3)
       .text(invoiceData.user.name)
-      .text(invoiceData.user.email)
-      .moveDown(1);
+      .text(invoiceData.user.email);
 
-    // ===== INVOICE META (RIGHT SIDE BOX) =====
-    const metaBoxTopY = doc.y;
-    const metaBoxX = 320;
-    const metaBoxWidth = 225;
-
+    // ===== INVOICE META COLUMN =====
+    const metaX = leftX + columnWidth;
+    doc
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .fillColor('#111827')
+      .text('Invoice Details:', metaX, yStart, { underline: true });
     doc
       .fontSize(11)
-      .font("Helvetica")
-      .fillColor("#111827")
-      .text(`Invoice No: ${invoiceData.invoiceNumber}`, metaBoxX, metaBoxTopY, {
-        width: metaBoxWidth,
-        align: "left",
-      })
-      .moveDown(0.2);
+      .font('Helvetica')
+      .fillColor('#111827')
+      .moveDown(0.3)
+      .text(`Invoice No: ${invoiceData.invoiceNumber}`, metaX)
+      .text(`Issue Date: ${invoiceData.issueDate}`, metaX);
 
+    // After both columns we need to reset the x position and move below
+    // whichever column took up the most vertical space.  PDFKit's
+    // current y coordinate will be the lower of the two because we
+    // changed x but not y between columns.
+    doc.moveDown(1);
+
+    // Draw a thin separator line
     doc
-      .text(`Issue Date: ${invoiceData.issueDate}`, {
-        width: metaBoxWidth,
-        align: "left",
-      })
-      .moveDown(0.2);
-
-    // Dynamic meta box height
-    const metaBoxBottomY = doc.y;
-    const metaBoxHeight = metaBoxBottomY - metaBoxTopY + 5;
-
-    doc
-      .roundedRect(
-        metaBoxX - 5,
-        metaBoxTopY - 5,
-        metaBoxWidth + 10,
-        metaBoxHeight + 5,
-        6
-      )
-      .strokeColor("#E5E7EB")
-      .lineWidth(0.8)
+      .moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+      .strokeColor('#E5E7EB')
+      .lineWidth(1)
       .stroke();
-
-    doc.moveDown(2);
+    doc.moveDown(1);
 
     // ===== COURSE DETAILS =====
     doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#111827")
-      .text("Course Details", { underline: true })
-      .moveDown(0.6);
-
+      .fontSize(13)
+      .font('Helvetica-Bold')
+      .fillColor('#111827')
+      .text('Course Details', { underline: true });
     doc
       .fontSize(11)
-      .font("Helvetica")
-      .fillColor("#111827")
-      .text(`Course: ${invoiceData.course.name}`)
-      .moveDown(0.3);
+      .font('Helvetica')
+      .fillColor('#111827')
+      .moveDown(0.3)
+      .text(`Course: ${invoiceData.course.name}`);
 
-    if (
-      invoiceData.course.listedPrice !== null &&
-      invoiceData.course.listedPrice !== undefined
-    ) {
-      doc
-        .fontSize(11)
-        .text(
-          `Listed Course Price: ${formatCurrency(
-            invoiceData.course.listedPrice
-          )}`
-        );
-    }
-
-    // ===== AMOUNT SUMMARY BOX =====
     doc.moveDown(1);
 
-    const summaryBoxY = doc.y;
-    const summaryBoxWidth = 495;
-
+    // ===== PAYMENT SUMMARY BOX =====
+    /**
+     * Draw a rounded rectangle for the payment summary.  We leave a
+     * little padding inside the box so that the text doesn't butt up
+     * against the border.  The label and the amount are presented on
+     * separate lines for clarity.
+     */
+    const summaryX = doc.page.margins.left;
+    const summaryWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const summaryY = doc.y;
+    const summaryHeight = 60;
     doc
-      .roundedRect(50, summaryBoxY - 5, summaryBoxWidth, 60, 8)
-      .strokeColor("#D1D5DB")
+      .roundedRect(summaryX, summaryY, summaryWidth, summaryHeight, 8)
+      .strokeColor('#D1D5DB')
       .lineWidth(0.8)
-      .stroke();
-
+      .fillAndStroke('#F9FAFB', '#D1D5DB');
+    // Add text inside the summary box
+    const innerPadding = 10;
     doc
       .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#111827")
-      .text("Payment Summary", 60, summaryBoxY, {
-        width: summaryBoxWidth - 20,
-        align: "left",
-      });
-
-    const billedAmountText = `Billed Amount: ${formatCurrency(
-      invoiceData.amount
-    )}`;
-
+      .font('Helvetica-Bold')
+      .fillColor('#111827')
+      .text('Payment Summary', summaryX + innerPadding, summaryY + innerPadding);
     doc
-      .moveDown(0.6)
       .fontSize(11)
-      .font("Helvetica")
-      .fillColor("#111827")
-      .text(billedAmountText, {
-        width: summaryBoxWidth - 20,
-        align: "left",
-      });
+      .font('Helvetica')
+      .fillColor('#111827')
+      .moveDown(0.5)
+      .text(`Billed Amount: ${formatCurrency(invoiceData.amount)}`, summaryX + innerPadding, doc.y);
 
-    doc.moveDown(2);
+    // Move the cursor below the summary box
+    doc.y = summaryY + summaryHeight + 20;
 
     // ===== NOTES (OPTIONAL) =====
     if (invoiceData.notes) {
       doc
-        .fontSize(11)
-        .font("Helvetica-Bold")
-        .fillColor("#111827")
-        .text("Notes:", { underline: true })
-        .moveDown(0.3);
-
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .fillColor('#111827')
+        .text('Notes:', { underline: true });
       doc
         .fontSize(11)
-        .font("Helvetica")
-        .fillColor("#111827")
+        .font('Helvetica')
+        .fillColor('#111827')
+        .moveDown(0.3)
         .text(invoiceData.notes, {
-          width: 495,
-          align: "left",
-        })
-        .moveDown(2);
+          width: summaryWidth,
+          align: 'left',
+        });
+      doc.moveDown(1);
     }
 
     // ===== FOOTER =====
-    const bottomMargin = 50;
-    const pageHeight = doc.page.height;
-    doc.y = pageHeight - bottomMargin - 40;
-
-    doc
-      .moveTo(50, doc.y)
-      .lineTo(545, doc.y)
-      .strokeColor("#E5E7EB")
+    const footerY = doc.page.height - doc.page.margins.bottom - 40;
+    doc.moveTo(doc.page.margins.left, footerY)
+      .lineTo(doc.page.width - doc.page.margins.right, footerY)
+      .strokeColor('#E5E7EB')
       .lineWidth(1)
-      .stroke()
-      .moveDown(0.5);
-
+      .stroke();
     doc
       .fontSize(9)
-      .font("Helvetica")
-      .fillColor("#6B7280")
+      .font('Helvetica')
+      .fillColor('#6B7280')
       .text(
-        "This is a system generated invoice from Artistic Vickey. For any billing queries, contact support@artisticvickey.in.",
-        50,
-        doc.y,
+        'This is a system generated invoice from Artistic Vickey. For any billing queries, contact vikkitembhurne358@gmail.com.',
+        doc.page.margins.left,
+        footerY + 10,
         {
-          width: 495,
-          align: "center",
-        }
+          width: summaryWidth,
+          align: 'center',
+        },
       );
 
+    // Finalise the document
     doc.end();
   });
 }
