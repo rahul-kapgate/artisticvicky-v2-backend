@@ -5,7 +5,7 @@ import { Buffer } from 'node:buffer';
  * Generate a nicely formatted invoice PDF as a Buffer.  This function
  * improves upon the original implementation by organising the page
  * into clear sections, placing the billing details and invoice
- * metadata side‑by‑side, and drawing subtle borders around key areas
+ * metadata side-by-side, and drawing subtle borders around key areas
  * like the payment summary.  Headings use a consistent typographic
  * hierarchy and spacing has been tuned so that the document reads
  * comfortably on A4 paper.  Callers can await the returned promise
@@ -21,7 +21,7 @@ import { Buffer } from 'node:buffer';
  * @param {string} invoiceData.invoiceNumber – unique invoice identifier
  * @param {string} invoiceData.issueDate – ISO formatted issue date
  * @param {number} invoiceData.amount – amount billed
- * @param {string} [invoiceData.notes] – optional free‑form notes
+ * @param {string} [invoiceData.notes] – optional free-form notes
  * @returns {Promise<Buffer>} a promise resolving to a Buffer containing the PDF
  */
 export function generateInvoicePdfBuffer(invoiceData) {
@@ -64,7 +64,8 @@ export function generateInvoicePdfBuffer(invoiceData) {
      * vertical alignment.
      */
     const leftX = doc.x; // should be margin
-    const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const contentWidth =
+      doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const columnWidth = contentWidth / 2;
     const yStart = doc.y;
 
@@ -98,9 +99,7 @@ export function generateInvoicePdfBuffer(invoiceData) {
       .text(`Issue Date: ${invoiceData.issueDate}`, metaX);
 
     // After both columns we need to reset the x position and move below
-    // whichever column took up the most vertical space.  PDFKit's
-    // current y coordinate will be the lower of the two because we
-    // changed x but not y between columns.
+    // whichever column took up the most vertical space.
     doc.moveDown(1);
 
     // Draw a thin separator line
@@ -128,34 +127,35 @@ export function generateInvoicePdfBuffer(invoiceData) {
     doc.moveDown(1);
 
     // ===== PAYMENT SUMMARY BOX =====
-    /**
-     * Draw a rounded rectangle for the payment summary.  We leave a
-     * little padding inside the box so that the text doesn't butt up
-     * against the border.  The label and the amount are presented on
-     * separate lines for clarity.
-     */
     const summaryX = doc.page.margins.left;
-    const summaryWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const summaryWidth =
+      doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const summaryY = doc.y;
     const summaryHeight = 60;
+
     doc
       .roundedRect(summaryX, summaryY, summaryWidth, summaryHeight, 8)
       .strokeColor('#D1D5DB')
       .lineWidth(0.8)
       .fillAndStroke('#F9FAFB', '#D1D5DB');
-    // Add text inside the summary box
+
     const innerPadding = 10;
+
     doc
       .fontSize(12)
       .font('Helvetica-Bold')
       .fillColor('#111827')
       .text('Payment Summary', summaryX + innerPadding, summaryY + innerPadding);
+
     doc
       .fontSize(11)
       .font('Helvetica')
       .fillColor('#111827')
-      .moveDown(0.5)
-      .text(`Billed Amount: ${formatCurrency(invoiceData.amount)}`, summaryX + innerPadding, doc.y);
+      .text(
+        `Billed Amount: ${formatCurrency(invoiceData.amount)}`,
+        summaryX + innerPadding,
+        summaryY + innerPadding + 22,
+      );
 
     // Move the cursor below the summary box
     doc.y = summaryY + summaryHeight + 20;
@@ -179,13 +179,45 @@ export function generateInvoicePdfBuffer(invoiceData) {
       doc.moveDown(1);
     }
 
+    // ===== SIGNATURE (DIGITAL SIGN) =====
+    // Placed on the right side above the footer.
+    const sigBlockWidth = 200;
+    const sigBlockX =
+      doc.page.width - doc.page.margins.right - sigBlockWidth;
+    const sigBlockY = doc.y + 10;
+
+    // Stylised signature text
+    doc
+      .fontSize(18)
+      .font('Helvetica-Oblique')
+      .fillColor('#111827')
+      .text('Vicky', sigBlockX, sigBlockY + 20, {
+        width: sigBlockWidth,
+        align: 'left',
+      });
+
+    // Small note under the signature
+    doc
+      .fontSize(9)
+      .font('Helvetica')
+      .fillColor('#6B7280')
+      .text('Digitally signed by Vicky', sigBlockX, sigBlockY + 45, {
+        width: sigBlockWidth,
+        align: 'left',
+      });
+
+    // Ensure internal cursor is below the signature block
+    doc.y = Math.max(doc.y, sigBlockY + 65);
+
     // ===== FOOTER =====
     const footerY = doc.page.height - doc.page.margins.bottom - 40;
-    doc.moveTo(doc.page.margins.left, footerY)
+    doc
+      .moveTo(doc.page.margins.left, footerY)
       .lineTo(doc.page.width - doc.page.margins.right, footerY)
       .strokeColor('#E5E7EB')
       .lineWidth(1)
       .stroke();
+
     doc
       .fontSize(9)
       .font('Helvetica')
