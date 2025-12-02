@@ -18,6 +18,7 @@ import sectionRoutes from "./routes/sectionRoutes.js"
 import videoRoutes from "./routes/videoRoutes.js";
 import studentArtWorkRoutes from "./routes/studentArtWorkRoutes.js"
 import adminBillingRouter from "./routes/adminBillingRoutes.js";
+import coursePaymentRoutes from "./routes/coursePaymentRoutes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -45,6 +46,7 @@ app.use("/api/section", sectionRoutes)
 app.use("/api/video", videoRoutes);
 app.use("/api/student-artwork", studentArtWorkRoutes);
 app.use("/api/invoice", adminBillingRouter);
+app.use("/api/course-payments", coursePaymentRoutes);
 
 // 🧱 Error Handler
 // app.use(errorHandler);
