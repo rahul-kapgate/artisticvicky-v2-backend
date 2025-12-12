@@ -11,7 +11,7 @@ import { isAdmin } from "../middlewares/roleMiddleware.js";
 const router = express.Router();
 
 router.post("/", verifyToken, isAdmin, createSection);
-router.get("/", verifyToken, isAdmin, getSectionsWithVideos);
+router.get("/", verifyToken, getSectionsWithVideos);
 router.put("/:id", verifyToken, isAdmin, updateSection);     // ✏️ New edit route
 router.delete("/:id", verifyToken, isAdmin, deleteSection);
 
