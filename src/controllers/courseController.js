@@ -239,6 +239,7 @@ export const updateCourse = async (req, res) => {
             duration,
             is_published,
             tags,
+            price_without_discount,
         } = req.body;
 
         const { data: existingCourse, error: fetchError } = await supabase
@@ -294,6 +295,7 @@ export const updateCourse = async (req, res) => {
                 duration,
                 is_published,
                 tags,
+                price_without_discount,
                 image: imageUrl,
                 updated_at: new Date(),
             })
