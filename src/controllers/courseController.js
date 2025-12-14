@@ -7,12 +7,12 @@ const upload = multer({ dest: "uploads/" });
 const createCourse = async (req, res) => {
 
     try {
-        const { course_name, description, price, category, level, language, duration, is_published, tags } = req.body;
+        const { course_name, description, price, category, level, language, duration, is_published, tags, price_without_discount } = req.body;
 
         const file = req.file;
 
         // Validate required fields
-        if (!course_name || !description || !price) {
+        if (!course_name || !description || !price || !price_without_discount) {
             return res.status(400).json({ success: false, message: "All required fields must be provided" });
         }
 
@@ -59,6 +59,7 @@ const createCourse = async (req, res) => {
                     is_published,
                     created_by: req.user.id,
                     tags,
+                    price_without_discount,
                 },
             ])
             .select();
