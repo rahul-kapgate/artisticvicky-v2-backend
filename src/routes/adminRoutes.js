@@ -14,8 +14,8 @@ router.get("/dashboard-stats", verifyToken, isAdmin, getDashboardStats);
 
 router.get("/all-users", verifyToken, isAdmin, getAllUsers);
 
-router.get("/mock-test-score", verifyToken, isAdmin, getMockTestScore)
+router.post("/mock-test-score", verifyToken, isAdmin, getMockTestScore)
 
-router.get("/pyq-test-score", verifyToken, isAdmin, getPyqTestData)
+router.post("/pyq-test-score", verifyToken, isAdmin, getPyqTestData)
 
 export default router;
