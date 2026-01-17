@@ -432,3 +432,69 @@ export const createMockQuestion = async (req, res) => {
     });
   }
 };
+
+
+// soft normalize: "Test   Question 1" == "test question 1"
+const normSoft = (s = "") => s.trim().replace(/\s+/g, " ").toLowerCase();
+
+export const searchMockQuestions = async (req, res) => {
+  try {
+    const { course_id } = req.params;
+    const q = String(req.query.q || "").trim();
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        message: "Query param 'q' is required",
+      });
+    }
+
+    const qSoft = normSoft(q);
+
+    // 1) Fetch candidate results using ILIKE (fast + useful for admin search UI)
+    const { data, error } = await supabase
+      .from("mock_questions")
+      .select("id, course_id, question_text, difficulty, image_url, created_at")
+      .eq("course_id", course_id)
+      .ilike("question_text", `%${q}%`)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+
+    const rows = data || [];
+
+    // 2) classify matches
+    const exactMatches = rows.filter((r) => r.question_text === q);
+    const softMatches = rows.filter((r) => normSoft(r.question_text) === qSoft);
+
+    return res.status(200).json({
+      success: true,
+      course_id: Number(course_id),
+      query: {
+        raw: q,
+        soft: qSoft,
+      },
+      found: {
+        any: rows.length > 0,
+        exact: exactMatches.length > 0,
+        soft: softMatches.length > 0,
+      },
+      counts: {
+        results: rows.length,
+        exact: exactMatches.length,
+        soft: softMatches.length,
+      },
+      exactMatches,
+      softMatches,
+      results: rows, // all results from ilike
+    });
+  } catch (err) {
+    console.error("❌ Error searching questions:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to search questions",
+      error: err.message,
+    });
+  }
+};
