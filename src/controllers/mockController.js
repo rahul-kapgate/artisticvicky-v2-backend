@@ -94,7 +94,6 @@ export const getMockQuestions = async (req, res) => {
 
 
 // Submit a mock test attempt and auto-evaluate score
-// Submit a mock test attempt and auto-evaluate score
 export const submitMockAttempt = async (req, res) => {
   try {
     const { course_id, answers } = req.body;
@@ -292,6 +291,143 @@ export const getMockAttemptDetails = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch attempt details",
+      error: err.message,
+    });
+  }
+};
+
+
+const normalizeQuestionText = (t = "") =>
+  t.trim().replace(/\s+/g, " ").toLowerCase();
+
+const safeName = (name = "image") =>
+  name.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+async function uploadMockImage({ file, course_id }) {
+  const bucket = "course-images"; // ✅ your bucket
+  const folder = `mock-test-images/${course_id}`; // ✅ your folder path
+  const filePath = `${folder}/${Date.now()}_${safeName(file.originalname)}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(filePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
+
+  if (uploadError) throw uploadError;
+
+  // If bucket is PUBLIC, this works:
+  const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
+export const createMockQuestion = async (req, res) => {
+  try {
+    const { course_id } = req.params;
+
+    // When using multipart/form-data, fields may arrive as strings:
+    let { question_text, options, correct_option_id, difficulty, image_url } = req.body;
+
+    if (typeof options === "string") {
+      try {
+        options = JSON.parse(options);
+      } catch {
+        return res.status(400).json({ success: false, message: "options must be valid JSON" });
+      }
+    }
+
+    correct_option_id = Number(correct_option_id);
+
+    // ---- validations ----
+    if (!course_id) {
+      return res.status(400).json({ success: false, message: "course_id is required" });
+    }
+    if (!question_text || typeof question_text !== "string" || !question_text.trim()) {
+      return res.status(400).json({ success: false, message: "question_text is required" });
+    }
+    if (!Array.isArray(options) || options.length < 2) {
+      return res.status(400).json({ success: false, message: "options must be an array (min 2)" });
+    }
+    if (!Number.isFinite(correct_option_id)) {
+      return res.status(400).json({ success: false, message: "correct_option_id must be a number" });
+    }
+
+    const optionIds = new Set(options.map((o) => Number(o?.id)));
+    if (!optionIds.has(correct_option_id)) {
+      return res.status(422).json({
+        success: false,
+        message: "correct_option_id must match one of the option ids",
+      });
+    }
+
+    // ✅ If file is attached, upload to storage and override image_url
+    if (req.file) {
+      image_url = await uploadMockImage({ file: req.file, course_id });
+    }
+
+    // ---- API-level duplicate check (question_text only) ----
+    const normalized = normalizeQuestionText(question_text);
+
+    // Pagination-safe duplicate check (so it works even if > 1000 questions)
+    const limit = 1000;
+    let from = 0;
+    let foundDuplicate = false;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("mock_questions")
+        .select("id, question_text")
+        .eq("course_id", course_id)
+        .range(from, from + limit - 1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      if (data.some((q) => normalizeQuestionText(q.question_text) === normalized)) {
+        foundDuplicate = true;
+        break;
+      }
+
+      from += limit;
+    }
+
+    if (foundDuplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "Duplicate question_text already exists for this course",
+      });
+    }
+
+    // ---- insert ----
+
+    const row = {
+      course_id: Number(course_id),
+      question_text: question_text.trim(),
+      options,
+      correct_option_id: Number(correct_option_id),
+      difficulty: difficulty ?? null,
+      image_url: image_url ?? null,
+    };
+
+    const { data: created, error: insertError } = await supabase
+      .from("mock_questions")
+      .insert([row])
+      .select("*")
+      .single();
+
+    if (insertError) throw insertError;
+
+    return res.status(201).json({
+      success: true,
+      message: "Mock question created successfully",
+      data: created,
+    });
+  } catch (err) {
+    console.error("❌ Error creating mock question:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create mock question",
       error: err.message,
     });
   }
