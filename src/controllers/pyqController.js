@@ -34,9 +34,12 @@ export const getPYQQuestions = async (req, res) => {
     const { data, error } = await supabase
       .from("pyq_questions")
       .select("*")
-      .eq("paper_id", paper_id);
+      .eq("paper_id", paper_id)
+      .order("id", { ascending: true });;
 
     if (error) throw error;
+
+    console.log(data);
 
     res.status(200).json({
       success: true,
