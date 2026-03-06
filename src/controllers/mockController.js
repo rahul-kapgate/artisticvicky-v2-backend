@@ -1,4 +1,8 @@
 import { supabase } from "../config/supabaseClient.js";
+import { s3 } from "../config/s3Client.js";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import dotenv from "dotenv";
+dotenv.config();
 
 // Get random 40 questions for a given course
 export const getMockQuestions = async (req, res) => {
@@ -304,22 +308,22 @@ const safeName = (name = "image") =>
   name.replace(/[^a-zA-Z0-9._-]/g, "_");
 
 async function uploadMockImage({ file, course_id }) {
-  const bucket = "course-images"; // ✅ your bucket
-  const folder = `mock-test-images/${course_id}`; // ✅ your folder path
-  const filePath = `${folder}/${Date.now()}_${safeName(file.originalname)}`;
+  const bucket = process.env.AWS_S3_BUCKET;
+  const fileKey = `mock-test-images/${course_id}/${Date.now()}_${safeName(file.originalname)}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from(bucket)
-    .upload(filePath, file.buffer, {
-      contentType: file.mimetype,
-      upsert: false,
-    });
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: fileKey,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  });
 
-  if (uploadError) throw uploadError;
+  await s3.send(command);
 
-  // If bucket is PUBLIC, this works:
-  const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
-  return data.publicUrl;
+  // standard S3 object URL
+  const publicUrl = `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+
+  return publicUrl;
 }
 
 export const createMockQuestion = async (req, res) => {
