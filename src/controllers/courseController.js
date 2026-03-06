@@ -1,8 +1,68 @@
 import { supabase } from "../config/supabaseClient.js";
 import multer from "multer";
-import fs from "fs";
+import { s3 } from "../config/s3Client.js";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const ok = ["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(
+      file.mimetype,
+    );
+    cb(ok ? null : new Error("Only image files are allowed"), ok);
+  },
+});
+
+const safeName = (name = "image") => name.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const buildS3Url = (key) =>
+  `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+async function uploadCourseImage(file) {
+  const key = `Courses-images/${Date.now()}_${safeName(file.originalname)}`;
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  });
+
+  await s3.send(command);
+
+  return {
+    key,
+    url: buildS3Url(key),
+  };
+}
+
+function getS3KeyFromUrl(url) {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    const expectedHost = `${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+
+    if (parsed.host !== expectedHost) return null;
+
+    return decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+  } catch {
+    return null;
+  }
+}
+
+async function deleteCourseImageFromS3(imageUrl) {
+  const key = getS3KeyFromUrl(imageUrl);
+  if (!key) return;
+
+  const command = new DeleteObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+  });
+
+  await s3.send(command);
+}
 
 const createCourse = async (req, res) => {
   try {
@@ -21,46 +81,24 @@ const createCourse = async (req, res) => {
 
     const file = req.file;
 
-    // Validate required fields
     if (!course_name || !description || !price || !price_without_discount) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "All required fields must be provided",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "All required fields must be provided",
+      });
     }
 
     if (!file) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Course image is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Course image is required",
+      });
     }
 
-    // ✅ Upload image to Supabase Storage
-    const filePath = `courses/${Date.now()}_${file.originalname}`;
+    // ✅ Upload image to S3
+    const { url: imageUrl } = await uploadCourseImage(file);
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("course-images")
-      .upload(filePath, fs.createReadStream(file.path), {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.mimetype,
-        duplex: "half",
-      });
-
-    fs.unlinkSync(file.path); // cleanup temp file
-
-    if (uploadError) throw uploadError;
-
-    // ✅ Get public URL
-    const { data: publicUrlData } = supabase.storage
-      .from("course-images")
-      .getPublicUrl(filePath);
-
-    const imageUrl = publicUrlData.publicUrl;
-
-    // Insert into Supabase
+    // ✅ Insert into Supabase
     const { data, error } = await supabase
       .from("courses")
       .insert([
@@ -93,6 +131,7 @@ const createCourse = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while creating course",
+      error: err.message,
     });
   }
 };
@@ -125,7 +164,6 @@ const getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1️⃣ Fetch course details
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("*")
@@ -142,7 +180,6 @@ const getCourseById = async (req, res) => {
       throw courseError;
     }
 
-    // 2️⃣ Fetch related sections from course_sections
     const { data: sectionsData, error: sectionError } = await supabase
       .from("course_sections")
       .select("section_type")
@@ -150,11 +187,9 @@ const getCourseById = async (req, res) => {
 
     if (sectionError) throw sectionError;
 
-    // 3️⃣ Attach sections (array of strings) to the course
     const sections = sectionsData?.map((s) => s.section_type) || [];
     const courseWithSections = { ...course, sections };
 
-    // 4️⃣ Return combined result
     res.status(200).json({
       success: true,
       message: "Course fetched successfully",
@@ -180,7 +215,6 @@ const getEnrolledCourses = async (req, res) => {
       });
     }
 
-    // 1️⃣ Fetch enrolled courses
     const { data: courses, error: courseError } = await supabase
       .from("courses")
       .select(
@@ -200,10 +234,8 @@ const getEnrolledCourses = async (req, res) => {
       });
     }
 
-    // 2️⃣ Get all course IDs
     const courseIds = courses.map((c) => c.id);
 
-    // 3️⃣ Fetch sections for those courses
     const { data: sectionsData, error: sectionError } = await supabase
       .from("course_sections")
       .select("course_id, section_type")
@@ -211,20 +243,17 @@ const getEnrolledCourses = async (req, res) => {
 
     if (sectionError) throw sectionError;
 
-    // 4️⃣ Map sections to corresponding courses
     const sectionsMap = sectionsData.reduce((acc, row) => {
       if (!acc[row.course_id]) acc[row.course_id] = [];
       acc[row.course_id].push(row.section_type);
       return acc;
     }, {});
 
-    // 5️⃣ Attach sections to each course
     const coursesWithSections = courses.map((course) => ({
       ...course,
       sections: sectionsMap[course.id] || [],
     }));
 
-    // 6️⃣ Respond with final data
     res.status(200).json({
       success: true,
       message: "Enrolled courses fetched successfully",
@@ -262,39 +291,28 @@ export const updateCourse = async (req, res) => {
       .eq("id", id)
       .single();
 
-    if (fetchError || !existingCourse)
-      return res
-        .status(404)
-        .json({ success: false, message: "Course not found" });
+    if (fetchError || !existingCourse) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+      });
+    }
 
     let imageUrl = existingCourse.image;
 
-    // ✅ Upload new image if provided
+    // ✅ Upload new image to S3 if provided
     if (req.file) {
-      // Optional: Delete old image
+      const uploaded = await uploadCourseImage(req.file);
+      imageUrl = uploaded.url;
+
+      // Optional: delete old image after new upload succeeds
       if (existingCourse.image) {
-        const oldPath = existingCourse.image.split("course-images/")[1];
-        if (oldPath)
-          await supabase.storage.from("course-images").remove([oldPath]);
+        try {
+          await deleteCourseImageFromS3(existingCourse.image);
+        } catch (deleteErr) {
+          console.error("Old image delete failed:", deleteErr.message);
+        }
       }
-
-      const filePath = `courses/${Date.now()}_${req.file.originalname}`;
-      const { error: uploadError } = await supabase.storage
-        .from("course-images")
-        .upload(filePath, fs.createReadStream(req.file.path), {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: req.file.mimetype,
-          duplex: "half",
-        });
-
-      fs.unlinkSync(req.file.path);
-      if (uploadError) throw uploadError;
-
-      const { data: publicUrlData } = supabase.storage
-        .from("course-images")
-        .getPublicUrl(filePath);
-      imageUrl = publicUrlData.publicUrl;
     }
 
     const { data, error } = await supabase
@@ -328,6 +346,7 @@ export const updateCourse = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while updating course",
+      error: error.message,
     });
   }
 };
@@ -342,16 +361,20 @@ export const deleteCourse = async (req, res) => {
       .eq("id", id)
       .single();
 
-    if (fetchError || !course)
-      return res
-        .status(404)
-        .json({ success: false, message: "Course not found" });
+    if (fetchError || !course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+      });
+    }
 
-    // ✅ Remove image from storage
+    // ✅ Remove image from S3
     if (course.image) {
-      const imagePath = course.image.split("course-images/")[1];
-      if (imagePath)
-        await supabase.storage.from("course-images").remove([imagePath]);
+      try {
+        await deleteCourseImageFromS3(course.image);
+      } catch (deleteErr) {
+        console.error("Image delete failed:", deleteErr.message);
+      }
     }
 
     const { error } = await supabase.from("courses").delete().eq("id", id);
@@ -366,6 +389,7 @@ export const deleteCourse = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while deleting course",
+      error: error.message,
     });
   }
 };
