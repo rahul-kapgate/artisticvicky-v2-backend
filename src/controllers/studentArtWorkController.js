@@ -7,7 +7,7 @@ export const uploadArt = multer({ dest: "uploads/" });
 // 📌 ADD ARTWORK (ADMIN ONLY)
 export const createStudentArtWork = async (req, res) => {
   try {
-    const { student_name, title, city  } = req.body;
+    const { student_name, title, city } = req.body;
     const file = req.file;
 
     if (!student_name || !title) {
@@ -108,7 +108,9 @@ export const getStudentArtWorkById = async (req, res) => {
       .single();
 
     if (error) {
-      return res.status(404).json({ success: false, message: "Artwork not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Artwork not found" });
     }
 
     res.status(200).json({
@@ -125,7 +127,7 @@ export const getStudentArtWorkById = async (req, res) => {
 export const updateStudentArtWork = async (req, res) => {
   try {
     const { id } = req.params;
-    const { student_name, title, city  } = req.body;
+    const { student_name, title, city } = req.body;
 
     const { data: existing, error: fetchError } = await supabase
       .from("student_art_work")
@@ -134,7 +136,9 @@ export const updateStudentArtWork = async (req, res) => {
       .single();
 
     if (fetchError || !existing)
-      return res.status(404).json({ success: false, message: "Artwork not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Artwork not found" });
 
     let imageUrl = existing.image;
 
@@ -171,7 +175,7 @@ export const updateStudentArtWork = async (req, res) => {
       .update({
         student_name,
         title,
-        city ,
+        city,
         image: imageUrl,
         updated_at: new Date(),
       })
@@ -187,7 +191,9 @@ export const updateStudentArtWork = async (req, res) => {
     });
   } catch (e) {
     console.error("Update artwork error:", e.message);
-    res.status(500).json({ success: false, message: "Server error while updating artwork" });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error while updating artwork" });
   }
 };
 
@@ -203,7 +209,9 @@ export const deleteStudentArtWork = async (req, res) => {
       .single();
 
     if (fetchError || !artwork)
-      return res.status(404).json({ success: false, message: "Artwork not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Artwork not found" });
 
     // Remove image
     if (artwork.image) {
@@ -226,6 +234,8 @@ export const deleteStudentArtWork = async (req, res) => {
     });
   } catch (e) {
     console.error("Delete artwork error:", e.message);
-    res.status(500).json({ success: false, message: "Server error while deleting artwork" });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error while deleting artwork" });
   }
 };
