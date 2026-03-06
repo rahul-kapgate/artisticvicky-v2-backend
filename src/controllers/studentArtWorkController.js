@@ -1,8 +1,68 @@
 import { supabase } from "../config/supabaseClient.js";
 import multer from "multer";
-import fs from "fs";
+import { s3 } from "../config/s3Client.js";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
-export const uploadArt = multer({ dest: "uploads/" });
+export const uploadArt = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const ok = ["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(
+      file.mimetype,
+    );
+    cb(ok ? null : new Error("Only image files are allowed"), ok);
+  },
+});
+
+const safeName = (name = "image") => name.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+const buildS3Url = (key) =>
+  `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+async function uploadArtworkImage(file) {
+  const key = `student-artworks/${Date.now()}_${safeName(file.originalname)}`;
+
+  const command = new PutObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  });
+
+  await s3.send(command);
+
+  return {
+    key,
+    url: buildS3Url(key),
+  };
+}
+
+function getS3KeyFromUrl(url) {
+  if (!url) return null;
+
+  try {
+    const parsed = new URL(url);
+    const expectedHost = `${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+
+    if (parsed.host !== expectedHost) return null;
+
+    return decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+  } catch {
+    return null;
+  }
+}
+
+async function deleteArtworkImageFromS3(imageUrl) {
+  const key = getS3KeyFromUrl(imageUrl);
+  if (!key) return;
+
+  const command = new DeleteObjectCommand({
+    Bucket: process.env.AWS_S3_BUCKET,
+    Key: key,
+  });
+
+  await s3.send(command);
+}
 
 // 📌 ADD ARTWORK (ADMIN ONLY)
 export const createStudentArtWork = async (req, res) => {
@@ -24,28 +84,10 @@ export const createStudentArtWork = async (req, res) => {
       });
     }
 
-    // Upload to Supabase
-    const filePath = `art/${Date.now()}_${file.originalname}`;
+    // ✅ Upload to S3
+    const { url: imageUrl } = await uploadArtworkImage(file);
 
-    const { error: uploadError } = await supabase.storage
-      .from("student_art_work")
-      .upload(filePath, fs.createReadStream(file.path), {
-        upsert: false,
-        contentType: file.mimetype,
-        duplex: "half",
-      });
-
-    fs.unlinkSync(file.path);
-    if (uploadError) throw uploadError;
-
-    // Public URL
-    const { data: urlData } = supabase.storage
-      .from("student_art_work")
-      .getPublicUrl(filePath);
-
-    const imageUrl = urlData.publicUrl;
-
-    // Insert into table
+    // ✅ Insert into Supabase table
     const { data, error } = await supabase
       .from("student_art_work")
       .insert([
@@ -71,6 +113,7 @@ export const createStudentArtWork = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while adding artwork",
+      error: err.message,
     });
   }
 };
@@ -135,39 +178,27 @@ export const updateStudentArtWork = async (req, res) => {
       .eq("id", id)
       .single();
 
-    if (fetchError || !existing)
+    if (fetchError || !existing) {
       return res
         .status(404)
         .json({ success: false, message: "Artwork not found" });
+    }
 
     let imageUrl = existing.image;
 
-    // If new image uploaded
+    // ✅ If new image uploaded
     if (req.file) {
-      // Delete old image
+      const uploaded = await uploadArtworkImage(req.file);
+      imageUrl = uploaded.url;
+
+      // optional old image delete
       if (existing.image) {
-        const oldPath = existing.image.split("student_art_work/")[1];
-        if (oldPath) {
-          await supabase.storage.from("student_art_work").remove([oldPath]);
+        try {
+          await deleteArtworkImageFromS3(existing.image);
+        } catch (deleteErr) {
+          console.error("Old artwork image delete failed:", deleteErr.message);
         }
       }
-
-      const filePath = `art/${Date.now()}_${req.file.originalname}`;
-      const { error: uploadError } = await supabase.storage
-        .from("student_art_work")
-        .upload(filePath, fs.createReadStream(req.file.path), {
-          upsert: false,
-          contentType: req.file.mimetype,
-          duplex: "half",
-        });
-
-      fs.unlinkSync(req.file.path);
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("student_art_work")
-        .getPublicUrl(filePath);
-      imageUrl = urlData.publicUrl;
     }
 
     const { data, error } = await supabase
@@ -191,9 +222,11 @@ export const updateStudentArtWork = async (req, res) => {
     });
   } catch (e) {
     console.error("Update artwork error:", e.message);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error while updating artwork" });
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating artwork",
+      error: e.message,
+    });
   }
 };
 
@@ -208,16 +241,18 @@ export const deleteStudentArtWork = async (req, res) => {
       .eq("id", id)
       .single();
 
-    if (fetchError || !artwork)
+    if (fetchError || !artwork) {
       return res
         .status(404)
         .json({ success: false, message: "Artwork not found" });
+    }
 
-    // Remove image
+    // ✅ Remove image from S3
     if (artwork.image) {
-      const imgPath = artwork.image.split("student_art_work/")[1];
-      if (imgPath) {
-        await supabase.storage.from("student_art_work").remove([imgPath]);
+      try {
+        await deleteArtworkImageFromS3(artwork.image);
+      } catch (deleteErr) {
+        console.error("Artwork image delete failed:", deleteErr.message);
       }
     }
 
@@ -234,8 +269,10 @@ export const deleteStudentArtWork = async (req, res) => {
     });
   } catch (e) {
     console.error("Delete artwork error:", e.message);
-    res
-      .status(500)
-      .json({ success: false, message: "Server error while deleting artwork" });
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting artwork",
+      error: e.message,
+    });
   }
 };
