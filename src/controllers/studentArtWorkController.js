@@ -20,7 +20,7 @@ const buildS3Url = (key) =>
   `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
 async function uploadArtworkImage(file) {
-  const key = `student-artworks/${Date.now()}_${safeName(file.originalname)}`;
+  const key = `students-artworks/${Date.now()}_${safeName(file.originalname)}`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET,
