@@ -128,29 +128,22 @@ export const getMockTestSummary = async (req, res) => {
       });
     }
 
-    // ✅ 1. Get course enrollment data
-    const { data: courseData, error: courseError } = await supabase
-      .from("courses")
-      .select("id, students_enrolled")
-      .eq("id", parsedCourseId)
-      .single();
+const { data: courseData, error: courseError } = await supabase
+  .from("courses")
+  .select("id, students_enrolled")
+  .in("id", [1, 12]);
 
-    if (courseError) {
-      throw courseError;
-    }
+if (courseError) {
+  throw courseError;
+}
 
-    if (!courseData) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
-    }
+const isEnrolled = (courseData || []).some((course) => {
+  const enrolledStudents = Array.isArray(course.students_enrolled)
+    ? course.students_enrolled
+    : [];
 
-    const enrolledStudents = Array.isArray(courseData.students_enrolled)
-      ? courseData.students_enrolled
-      : [];
-
-    const isEnrolled = enrolledStudents.includes(parsedStudentId);
+  return enrolledStudents.some((id) => Number(id) === parsedStudentId);
+});
 
     // ✅ 2. Get total mock test count
     const { count, error: countError } = await supabase
