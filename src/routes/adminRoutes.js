@@ -2,7 +2,7 @@ import express from "express";
 import { getUsersWithCourses, enrollUserInCourse, unenrollUserFromCourse, getDashboardStats, getAllUsers } from "../controllers/adminController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
-import { getMockTestScore, getPyqTestData } from "../controllers/adminMockTestReport.js";
+import { getMockTestScore, getPyqTestData, getMockTestSummary } from "../controllers/adminMockTestReport.js";
 
 const router = express.Router();
 
@@ -17,5 +17,7 @@ router.get("/all-users", verifyToken, isAdmin, getAllUsers);
 router.post("/mock-test-score", verifyToken, isAdmin, getMockTestScore)
 
 router.post("/pyq-test-score", verifyToken, isAdmin, getPyqTestData)
+
+router.get("/mock-test-summary", verifyToken, isAdmin, getMockTestSummary);
 
 export default router;
