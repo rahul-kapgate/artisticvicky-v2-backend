@@ -18,6 +18,6 @@ router.post("/mock-test-score", verifyToken, isAdmin, getMockTestScore)
 
 router.post("/pyq-test-score", verifyToken, isAdmin, getPyqTestData)
 
-router.get("/mock-test-summary", verifyToken, isAdmin, getMockTestSummary);
+router.post("/mock-test-summary", verifyToken, isAdmin, getMockTestSummary);
 
 export default router;
