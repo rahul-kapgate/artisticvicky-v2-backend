@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { supabase } from "../config/supabaseClient.js";
 import dotenv from "dotenv";
-import { sendOtpToEmail } from "../services/emailService.js"
+import { sendOtpToEmail } from "../services/emailService.js";
 import crypto from "crypto";
 
 dotenv.config();
@@ -14,7 +14,9 @@ const login = async (req, res, next) => {
 
     // 1️⃣ Validate input
     if (!identifier || !password) {
-      return res.status(400).json({ message: "Email/Phone and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email/Phone and password are required" });
     }
 
     // 2️⃣ Check if identifier is email or phone
@@ -27,7 +29,11 @@ const login = async (req, res, next) => {
       .eq(isEmail ? "email" : "mobile", identifier)
       .limit(1);
 
-    console.log(users[0].user_name, "logged in", new Date().toISOString().slice(0, 19).replace("T", " "));
+    console.log(
+      users[0].user_name,
+      "logged in",
+      new Date().toISOString().slice(0, 19).replace("T", " "),
+    );
 
     if (error) throw error;
     const user = users?.[0];
@@ -46,30 +52,33 @@ const login = async (req, res, next) => {
     const accessToken = jwt.sign(
       { id: user.id, is_admin: user.is_admin },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "3h" }
+      { expiresIn: "3h" },
     );
 
     const refreshToken = jwt.sign(
       { id: user.id, is_admin: user.is_admin },
       process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     // 6️⃣ Send response
     res.status(200).json({
       message: "Login successful",
-      user: { id: user.id, email: user.email, mobile: user.mobile, is_admin: user.is_admin, },
+      user: {
+        id: user.id,
+        email: user.email,
+        mobile: user.mobile,
+        is_admin: user.is_admin,
+      },
       accessToken,
       refreshToken,
     });
-
   } catch (error) {
     next(error);
   }
-}
+};
 
 const signupInitiate = async (req, res) => {
-
   try {
     const { user_name, email, mobile, password } = req.body;
 
@@ -123,17 +132,13 @@ const signupInitiate = async (req, res) => {
       message: "Verification code sent to email",
       expires_in: 300,
     });
-
   } catch (error) {
     console.error("Signup error:", error);
     res.status(500).json({ message: "Internal server error" });
-
   }
-
-}
+};
 
 const signupVerify = async (req, res) => {
-
   try {
     const { email, otp } = req.body;
 
@@ -150,11 +155,11 @@ const signupVerify = async (req, res) => {
       .limit(1)
       .single();
 
-      if (error || !record) {
-        return res.status(404).json({ message: "OTP record not found" });
-      }
+    if (error || !record) {
+      return res.status(404).json({ message: "OTP record not found" });
+    }
 
-      // 2️⃣ Check expiry
+    // 2️⃣ Check expiry
     if (new Date() > new Date(record.expires_at)) {
       return res.status(400).json({ message: "OTP expired" });
     }
@@ -177,19 +182,18 @@ const signupVerify = async (req, res) => {
 
     if (insertError) throw insertError;
 
-     // 5️⃣ Mark OTP record as verified
-     await supabase
-     .from("email_verifications")
-     .update({ verified: true })
-     .eq("email", email);
+    // 5️⃣ Mark OTP record as verified
+    await supabase
+      .from("email_verifications")
+      .update({ verified: true })
+      .eq("email", email);
 
     res.status(201).json({ message: "Signup successful" });
-
   } catch (error) {
     console.error("Signup verify error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
-}
+};
 
 const refreshToken = async (req, res) => {
   try {
@@ -202,14 +206,16 @@ const refreshToken = async (req, res) => {
     // Verify refresh token
     jwt.verify(token, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
       if (err) {
-        return res.status(403).json({ message: "Invalid or expired refresh token" });
+        return res
+          .status(403)
+          .json({ message: "Invalid or expired refresh token" });
       }
 
       // Generate new access token
       const accessToken = jwt.sign(
         { id: decoded.id, is_admin: decoded.is_admin },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "3h" }
+        { expiresIn: "3h" },
       );
 
       res.status(200).json({
@@ -217,12 +223,10 @@ const refreshToken = async (req, res) => {
         accessToken,
       });
     });
-
   } catch (error) {
     console.error("Refresh token error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 export { login, signupInitiate, signupVerify, refreshToken };
