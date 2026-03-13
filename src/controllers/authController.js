@@ -19,23 +19,20 @@ const login = async (req, res, next) => {
         .json({ message: "Email/Phone and password are required" });
     }
 
+    const normalizedIdentifier = String(identifier).trim();
+
     // 2️⃣ Check if identifier is email or phone
-    const isEmail = identifier.includes("@");
+    const isEmail = normalizedIdentifier.includes("@");
 
     // 3️⃣ Fetch user from Supabase
     const { data: users, error } = await supabase
       .from("users")
       .select("*")
-      .eq(isEmail ? "email" : "mobile", identifier)
+      .eq(isEmail ? "email" : "mobile", normalizedIdentifier)
       .limit(1);
 
-    console.log(
-      users[0].user_name,
-      "logged in",
-      new Date().toISOString().slice(0, 19).replace("T", " "),
-    );
-
     if (error) throw error;
+
     const user = users?.[0];
 
     if (!user) {
@@ -47,6 +44,14 @@ const login = async (req, res, next) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    // ✅ Log only after user is confirmed
+    console.log(
+      `${user.user_name} logged in ${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ")}`,
+    );
 
     // 5️⃣ Generate JWT tokens
     const accessToken = jwt.sign(
@@ -62,7 +67,7 @@ const login = async (req, res, next) => {
     );
 
     // 6️⃣ Send response
-    res.status(200).json({
+    return res.status(200).json({
       message: "Login successful",
       user: {
         id: user.id,
