@@ -1,67 +1,67 @@
 import { supabase } from "../config/supabaseClient.js";
 
 export const getMockTestScore = async (req, res) => {
-    try {
-        const { student_Id, course_Id } = req.body;
+  try {
+    const { student_Id, course_Id } = req.body;
 
-        // ✅ Validation
-        if (!student_Id || !course_Id) {
-            return res.status(400).json({
-                success: false,
-                message: "student_Id and course_Id are required",
-            });
-        }
-
-        // ✅ Fetch data
-        const { data: score, error: fetchError } = await supabase
-            .from("mock_attempts")
-            .select("score, submitted_at")
-            .eq("course_id", course_Id)
-            .eq("student_id", student_Id);
-
-
-        if (fetchError) throw fetchError;
-
-        // ✅ No attempts
-        if (!score || score.length === 0) {
-            return res.status(200).json({
-                success: true,
-                message: "No mock test attempts found",
-                data: [],
-            });
-        }
-
-        // ✅ Success response
-        res.status(200).json({
-            success: true,
-            message: "Mock test score fetched successfully",
-            data: score,
-        })
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
+    // ✅ Validation
+    if (!student_Id || !course_Id) {
+      return res.status(400).json({
+        success: false,
+        message: "student_Id and course_Id are required",
+      });
     }
-}
+
+    // ✅ Fetch data
+    const { data: score, error: fetchError } = await supabase
+      .from("mock_attempts")
+      .select("score, submitted_at")
+      .eq("course_id", course_Id)
+      .eq("student_id", student_Id);
+
+    if (fetchError) throw fetchError;
+
+    // ✅ No attempts
+    if (!score || score.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No mock test attempts found",
+        data: [],
+      });
+    }
+
+    // ✅ Success response
+    res.status(200).json({
+      success: true,
+      message: "Mock test score fetched successfully",
+      data: score,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 export const getPyqTestData = async (req, res) => {
-    try {
-        const { student_Id } = req.body;
+  try {
+    const { student_Id } = req.body;
 
-        // ✅ Validation
-        if (!student_Id) {
-            return res.status(400).json({
-                success: false,
-                message: "student_Id is required",
-            });
-        }
+    // ✅ Validation
+    if (!student_Id) {
+      return res.status(400).json({
+        success: false,
+        message: "student_Id is required",
+      });
+    }
 
-        // ✅ Fetch data
-        const { data: score, error: fetchError } = await supabase
-            .from("pyq_attempts")
-            .select(`
+    // ✅ Fetch data
+    const { data: score, error: fetchError } = await supabase
+      .from("pyq_attempts")
+      .select(
+        `
     id,
     score,
     submitted_at,
@@ -71,39 +71,37 @@ export const getPyqTestData = async (req, res) => {
       exam_day,
       course_id
     )
-  `)
-            .eq("student_id", student_Id);
+  `,
+      )
+      .eq("student_id", student_Id);
 
-
-
-        if (fetchError) {
-            throw fetchError;
-        }
-
-        // ✅ Optional: handle no data case
-        if (!score || score.length === 0) {
-            return res.status(200).json({
-                success: true,
-                message: "No PYQ attempts found for this student",
-                data: [],
-            });
-        }
-
-        // ✅ Success response
-        return res.status(200).json({
-            success: true,
-            message: "PYQ test score fetched successfully",
-            data: score,
-        });
-
-    } catch (error) {
-        console.error("getPyqTestData error:", error);
-
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
+    if (fetchError) {
+      throw fetchError;
     }
+
+    // ✅ Optional: handle no data case
+    if (!score || score.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No PYQ attempts found for this student",
+        data: [],
+      });
+    }
+
+    // ✅ Success response
+    return res.status(200).json({
+      success: true,
+      message: "PYQ test score fetched successfully",
+      data: score,
+    });
+  } catch (error) {
+    console.error("getPyqTestData error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 };
 
 export const getMockTestSummary = async (req, res) => {
@@ -128,24 +126,25 @@ export const getMockTestSummary = async (req, res) => {
       });
     }
 
-const { data: courseData, error: courseError } = await supabase
-  .from("courses")
-  .select("id, students_enrolled")
-  .in("id", [1, 12]);
+    // ✅ Check enrollment
+    const { data: courseData, error: courseError } = await supabase
+      .from("courses")
+      .select("id, students_enrolled")
+      .in("id", [1, 12]);
 
-if (courseError) {
-  throw courseError;
-}
+    if (courseError) {
+      throw courseError;
+    }
 
-const isEnrolled = (courseData || []).some((course) => {
-  const enrolledStudents = Array.isArray(course.students_enrolled)
-    ? course.students_enrolled
-    : [];
+    const isEnrolled = (courseData || []).some((course) => {
+      const enrolledStudents = Array.isArray(course.students_enrolled)
+        ? course.students_enrolled
+        : [];
 
-  return enrolledStudents.some((id) => Number(id) === parsedStudentId);
-});
+      return enrolledStudents.some((id) => Number(id) === parsedStudentId);
+    });
 
-    // ✅ 2. Get total mock test count
+    // ✅ Get total mock test count
     const { count, error: countError } = await supabase
       .from("mock_attempts")
       .select("id", { count: "exact", head: true })
@@ -156,10 +155,10 @@ const isEnrolled = (courseData || []).some((course) => {
       throw countError;
     }
 
-    // ✅ 3. Get last 3 timestamps
+    // ✅ Get last 3 timestamps + scores
     const { data: lastAttempts, error: attemptsError } = await supabase
       .from("mock_attempts")
-      .select("submitted_at")
+      .select("submitted_at, score")
       .eq("course_id", parsedCourseId)
       .eq("student_id", parsedStudentId)
       .order("submitted_at", { ascending: false })
@@ -176,10 +175,21 @@ const isEnrolled = (courseData || []).some((course) => {
         student_id: parsedStudentId,
         course_id: parsedCourseId,
         mock_test_count: count || 0,
-        last_3_attempt_timestamps: lastAttempts?.map(
-          (item) => item.submitted_at
-        ) || [],
         is_enrolled: isEnrolled,
+
+        // ✅ combined last 3 attempts
+        last_3_attempts: (lastAttempts || []).map((item) => ({
+          submitted_at: item.submitted_at,
+          score: item.score,
+        })),
+
+        // ✅ optional: keep old structure for frontend compatibility
+        last_3_attempt_timestamps: (lastAttempts || []).map(
+          (item) => item.submitted_at,
+        ),
+
+        // ✅ optional: separate scores array
+        last_3_scores: (lastAttempts || []).map((item) => item.score),
       },
     });
   } catch (error) {
