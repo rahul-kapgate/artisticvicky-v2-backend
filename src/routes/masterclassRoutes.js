@@ -3,6 +3,8 @@ import {
   createMasterclass,
   updateMasterclass,
   uploadMasterclassImage,
+  getAllMasterclasses,
+  getMasterclassById,
 } from "../controllers/masterclassController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
