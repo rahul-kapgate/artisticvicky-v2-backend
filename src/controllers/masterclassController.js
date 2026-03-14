@@ -5,44 +5,28 @@ import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 /**
  * Multer config
- * Supports:
- * - image: png/jpg/jpeg/webp
- * - ppt_file: pdf/ppt/pptx
+ * Only for masterclass image upload
  */
-const masterclassUpload = multer({
+const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (req, file, cb) => {
-    const allowedMimeTypes = [
-      // image
-      "image/png",
-      "image/jpeg",
-      "image/jpg",
-      "image/webp",
-
-      // ppt/pdf
-      "application/pdf",
-      "application/vnd.ms-powerpoint",
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ];
-
-    const ok = allowedMimeTypes.includes(file.mimetype);
-    cb(ok ? null : new Error("Invalid file type"), ok);
+    const ok = ["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(
+      file.mimetype,
+    );
+    cb(ok ? null : new Error("Only image files are allowed"), ok);
   },
 });
 
-export const uploadMasterclassFiles = masterclassUpload.fields([
-  { name: "image", maxCount: 1 },
-  { name: "ppt_file", maxCount: 1 },
-]);
+export const uploadMasterclassImage = upload.single("image");
 
-const safeName = (name = "file") => name.replace(/[^a-zA-Z0-9._-]/g, "_");
+const safeName = (name = "image") => name.replace(/[^a-zA-Z0-9._-]/g, "_");
 
 const buildS3Url = (key) =>
   `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
-async function uploadFileToS3(file, folder = "uploads") {
-  const key = `${folder}/${Date.now()}_${safeName(file.originalname)}`;
+async function uploadCourseImage(file) {
+  const key = `masterclass-images/${Date.now()}_${safeName(file.originalname)}`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET,
@@ -56,7 +40,6 @@ async function uploadFileToS3(file, folder = "uploads") {
   return {
     key,
     url: buildS3Url(key),
-    fileName: file.originalname,
   };
 }
 
@@ -75,8 +58,8 @@ function getS3KeyFromUrl(url) {
   }
 }
 
-async function deleteFileFromS3(fileUrl) {
-  const key = getS3KeyFromUrl(fileUrl);
+async function deleteCourseImageFromS3(imageUrl) {
+  const key = getS3KeyFromUrl(imageUrl);
   if (!key) return;
 
   const command = new DeleteObjectCommand({
@@ -102,6 +85,7 @@ const parseNumber = (value, defaultValue = null) => {
 const parseTags = (tags) => {
   if (!tags) return [];
   if (Array.isArray(tags)) return tags;
+
   try {
     const parsed = JSON.parse(tags);
     return Array.isArray(parsed) ? parsed : [];
@@ -113,15 +97,8 @@ const parseTags = (tags) => {
   }
 };
 
-/**
- * CREATE MASTERCLASS
- * Inserts into:
- * 1. courses
- * 2. masterclass_details
- */
 export const createMasterclass = async (req, res) => {
   let uploadedImageUrl = null;
-  let uploadedPptUrl = null;
 
   try {
     const {
@@ -135,18 +112,18 @@ export const createMasterclass = async (req, res) => {
       is_published,
       tags,
       price_without_discount,
-
       masterclass_start_at,
       masterclass_end_at,
       meeting_provider,
       meeting_url,
       meeting_visible_before_minutes,
       approval_required,
+      ppt_file_url,
+      ppt_file_name,
       masterclass_status,
     } = req.body;
 
-    const imageFile = req.files?.image?.[0];
-    const pptFile = req.files?.ppt_file?.[0];
+    const file = req.file;
 
     if (
       !course_name ||
@@ -163,29 +140,18 @@ export const createMasterclass = async (req, res) => {
       });
     }
 
-    if (!imageFile) {
+    if (!file) {
       return res.status(400).json({
         success: false,
         message: "Masterclass image is required",
       });
     }
 
-    // Upload image
-    const uploadedImage = await uploadFileToS3(imageFile, "masterclass-images");
-    uploadedImageUrl = uploadedImage.url;
+    // Upload image to S3
+    const { url: imageUrl } = await uploadCourseImage(file);
+    uploadedImageUrl = imageUrl;
 
-    // Upload PPT/PDF if provided
-    let pptData = { url: null, fileName: null };
-    if (pptFile) {
-      const uploadedPpt = await uploadFileToS3(pptFile, "masterclass-ppt");
-      uploadedPptUrl = uploadedPpt.url;
-      pptData = {
-        url: uploadedPpt.url,
-        fileName: uploadedPpt.fileName,
-      };
-    }
-
-    // Step 1: insert into courses
+    // Insert into courses table
     const { data: courseData, error: courseError } = await supabase
       .from("courses")
       .insert([
@@ -193,13 +159,13 @@ export const createMasterclass = async (req, res) => {
           course_name,
           description,
           price: parseNumber(price, 0),
-          image: uploadedImageUrl,
+          image: imageUrl,
           category,
           level: level || "Beginner",
           language: language || "English",
           duration,
           is_published: parseBoolean(is_published, false),
-          created_by: req.user?.id || null,
+          created_by: req.user?.id,
           tags: parseTags(tags),
           price_without_discount: parseNumber(price_without_discount, 0),
           course_type: "masterclass",
@@ -210,7 +176,7 @@ export const createMasterclass = async (req, res) => {
 
     if (courseError) throw courseError;
 
-    // Step 2: insert into masterclass_details
+    // Insert into masterclass_details table
     const { data: masterclassDetails, error: detailsError } = await supabase
       .from("masterclass_details")
       .insert([
@@ -225,8 +191,8 @@ export const createMasterclass = async (req, res) => {
             15,
           ),
           approval_required: parseBoolean(approval_required, false),
-          ppt_file_url: pptData.url,
-          ppt_file_name: pptData.fileName,
+          ppt_file_url: ppt_file_url || null,
+          ppt_file_name: ppt_file_name || null,
           masterclass_status: masterclass_status || "draft",
         },
       ])
@@ -234,22 +200,15 @@ export const createMasterclass = async (req, res) => {
       .single();
 
     if (detailsError) {
-      // rollback best effort
+      // rollback course row
       await supabase.from("courses").delete().eq("id", courseData.id);
 
+      // rollback uploaded image
       if (uploadedImageUrl) {
         try {
-          await deleteFileFromS3(uploadedImageUrl);
+          await deleteCourseImageFromS3(uploadedImageUrl);
         } catch (err) {
-          console.error("Failed to delete uploaded image during rollback:", err.message);
-        }
-      }
-
-      if (uploadedPptUrl) {
-        try {
-          await deleteFileFromS3(uploadedPptUrl);
-        } catch (err) {
-          console.error("Failed to delete uploaded ppt during rollback:", err.message);
+          console.error("Image rollback delete failed:", err.message);
         }
       }
 
@@ -265,22 +224,13 @@ export const createMasterclass = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Create masterclass error:", error);
+    console.error("Create masterclass error:", error.message);
 
-    // cleanup if main flow failed after upload
     if (uploadedImageUrl) {
       try {
-        await deleteFileFromS3(uploadedImageUrl);
+        await deleteCourseImageFromS3(uploadedImageUrl);
       } catch (err) {
         console.error("Image cleanup failed:", err.message);
-      }
-    }
-
-    if (uploadedPptUrl) {
-      try {
-        await deleteFileFromS3(uploadedPptUrl);
-      } catch (err) {
-        console.error("PPT cleanup failed:", err.message);
       }
     }
 
@@ -292,13 +242,6 @@ export const createMasterclass = async (req, res) => {
   }
 };
 
-/**
- * UPDATE MASTERCLASS
- * Updates:
- * - courses row
- * - masterclass_details row
- * - optionally replaces image / ppt file in S3
- */
 export const updateMasterclass = async (req, res) => {
   try {
     const { id } = req.params;
@@ -314,42 +257,38 @@ export const updateMasterclass = async (req, res) => {
       is_published,
       tags,
       price_without_discount,
-
       masterclass_start_at,
       masterclass_end_at,
       meeting_provider,
       meeting_url,
       meeting_visible_before_minutes,
       approval_required,
+      ppt_file_url,
+      ppt_file_name,
       masterclass_status,
     } = req.body;
 
-    const imageFile = req.files?.image?.[0];
-    const pptFile = req.files?.ppt_file?.[0];
-
-    // Fetch course
-    const { data: existingCourse, error: courseFetchError } = await supabase
+    const { data: existingCourse, error: fetchCourseError } = await supabase
       .from("courses")
       .select("*")
       .eq("id", id)
       .eq("course_type", "masterclass")
       .single();
 
-    if (courseFetchError || !existingCourse) {
+    if (fetchCourseError || !existingCourse) {
       return res.status(404).json({
         success: false,
         message: "Masterclass course not found",
       });
     }
 
-    // Fetch details
-    const { data: existingDetails, error: detailsFetchError } = await supabase
+    const { data: existingDetails, error: fetchDetailsError } = await supabase
       .from("masterclass_details")
       .select("*")
       .eq("course_id", id)
       .single();
 
-    if (detailsFetchError || !existingDetails) {
+    if (fetchDetailsError || !existingDetails) {
       return res.status(404).json({
         success: false,
         message: "Masterclass details not found",
@@ -357,45 +296,31 @@ export const updateMasterclass = async (req, res) => {
     }
 
     let imageUrl = existingCourse.image;
-    let pptFileUrl = existingDetails.ppt_file_url;
-    let pptFileName = existingDetails.ppt_file_name;
 
-    // Replace image if new one uploaded
-    if (imageFile) {
-      const uploadedImage = await uploadFileToS3(imageFile, "masterclass-images");
-      imageUrl = uploadedImage.url;
+    // Upload new image if provided
+    if (req.file) {
+      const uploaded = await uploadCourseImage(req.file);
+      imageUrl = uploaded.url;
 
+      // delete old image after new upload success
       if (existingCourse.image) {
         try {
-          await deleteFileFromS3(existingCourse.image);
-        } catch (err) {
-          console.error("Old image delete failed:", err.message);
+          await deleteCourseImageFromS3(existingCourse.image);
+        } catch (deleteErr) {
+          console.error("Old image delete failed:", deleteErr.message);
         }
       }
     }
 
-    // Replace ppt/pdf if new one uploaded
-    if (pptFile) {
-      const uploadedPpt = await uploadFileToS3(pptFile, "masterclass-ppt");
-      pptFileUrl = uploadedPpt.url;
-      pptFileName = uploadedPpt.fileName;
-
-      if (existingDetails.ppt_file_url) {
-        try {
-          await deleteFileFromS3(existingDetails.ppt_file_url);
-        } catch (err) {
-          console.error("Old ppt delete failed:", err.message);
-        }
-      }
-    }
-
-    // Update course
     const { data: updatedCourse, error: updateCourseError } = await supabase
       .from("courses")
       .update({
         course_name: course_name ?? existingCourse.course_name,
         description: description ?? existingCourse.description,
-        price: price !== undefined ? parseNumber(price, existingCourse.price) : existingCourse.price,
+        price:
+          price !== undefined
+            ? parseNumber(price, existingCourse.price)
+            : existingCourse.price,
         image: imageUrl,
         category: category ?? existingCourse.category,
         level: level ?? existingCourse.level,
@@ -408,7 +333,10 @@ export const updateMasterclass = async (req, res) => {
         tags: tags !== undefined ? parseTags(tags) : existingCourse.tags,
         price_without_discount:
           price_without_discount !== undefined
-            ? parseNumber(price_without_discount, existingCourse.price_without_discount)
+            ? parseNumber(
+                price_without_discount,
+                existingCourse.price_without_discount,
+              )
             : existingCourse.price_without_discount,
         updated_at: new Date().toISOString(),
       })
@@ -418,7 +346,6 @@ export const updateMasterclass = async (req, res) => {
 
     if (updateCourseError) throw updateCourseError;
 
-    // Update masterclass_details
     const { data: updatedDetails, error: updateDetailsError } = await supabase
       .from("masterclass_details")
       .update({
@@ -439,8 +366,14 @@ export const updateMasterclass = async (req, res) => {
           approval_required !== undefined
             ? parseBoolean(approval_required, existingDetails.approval_required)
             : existingDetails.approval_required,
-        ppt_file_url: pptFileUrl,
-        ppt_file_name: pptFileName,
+        ppt_file_url:
+          ppt_file_url !== undefined
+            ? ppt_file_url || null
+            : existingDetails.ppt_file_url,
+        ppt_file_name:
+          ppt_file_name !== undefined
+            ? ppt_file_name || null
+            : existingDetails.ppt_file_name,
         masterclass_status:
           masterclass_status ?? existingDetails.masterclass_status,
         updated_at: new Date().toISOString(),
@@ -460,8 +393,7 @@ export const updateMasterclass = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Update masterclass error:", error);
-
+    console.error("Update masterclass error:", error.message);
     return res.status(500).json({
       success: false,
       message: "Server error while updating masterclass",
