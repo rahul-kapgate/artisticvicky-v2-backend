@@ -12,4 +12,7 @@ const router = express.Router();
 router.post("/", verifyToken, isAdmin, uploadMasterclassImage, createMasterclass);
 router.put("/:id", verifyToken, isAdmin, uploadMasterclassImage, updateMasterclass);
 
+router.get("/all-masterclasses", getAllMasterclasses);
+router.get("/:id", getMasterclassById);
+
 export default router;

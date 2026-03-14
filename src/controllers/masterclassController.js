@@ -401,3 +401,72 @@ export const updateMasterclass = async (req, res) => {
     });
   }
 };
+
+export const getAllMasterclasses = async (req, res) => {
+  try {
+    const { data: masterclasses, error } = await supabase
+      .from("courses")
+      .select(`
+        *,
+        masterclass_details (*)
+      `)
+      .eq("course_type", "masterclass")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      message: "Masterclasses fetched successfully",
+      count: masterclasses?.length || 0,
+      data: masterclasses || [],
+    });
+  } catch (error) {
+    console.error("Get all masterclasses error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching masterclasses",
+      error: error.message,
+    });
+  }
+};
+
+
+export const getMasterclassById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: masterclass, error } = await supabase
+      .from("courses")
+      .select(`
+        *,
+        masterclass_details (*)
+      `)
+      .eq("id", id)
+      .eq("course_type", "masterclass")
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return res.status(404).json({
+          success: false,
+          message: "Masterclass not found",
+        });
+      }
+      throw error;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Masterclass fetched successfully",
+      data: masterclass,
+    });
+  } catch (error) {
+    console.error("Get masterclass by id error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching masterclass",
+      error: error.message,
+    });
+  }
+};
