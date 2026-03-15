@@ -64,6 +64,70 @@ async function deleteCourseImageFromS3(imageUrl) {
   await s3.send(command);
 }
 
+/**
+ * Build course_id => [section_type, ...]
+ */
+async function getSectionsMap(courseIds = []) {
+  if (!courseIds.length) return {};
+
+  const { data, error } = await supabase
+    .from("course_sections")
+    .select("course_id, section_type")
+    .in("course_id", courseIds);
+
+  if (error) throw error;
+
+  return (data || []).reduce((acc, row) => {
+    if (!acc[row.course_id]) acc[row.course_id] = [];
+    acc[row.course_id].push(row.section_type);
+    return acc;
+  }, {});
+}
+
+/**
+ * Build course_id => masterclass_details object
+ */
+async function getMasterclassMap(courseIds = []) {
+  if (!courseIds.length) return {};
+
+  const { data, error } = await supabase
+    .from("masterclass_details")
+    .select("*")
+    .in("course_id", courseIds);
+
+  if (error) throw error;
+
+  return (data || []).reduce((acc, row) => {
+    acc[row.course_id] = row;
+    return acc;
+  }, {});
+}
+
+/**
+ * Enrich course response with:
+ * 1. sections
+ * 2. masterclass_details (only when course_type === "masterclass")
+ */
+async function enrichCourses(courses = []) {
+  if (!courses.length) return [];
+
+  const courseIds = courses.map((course) => course.id);
+
+  const [sectionsMap, masterclassMap] = await Promise.all([
+    getSectionsMap(courseIds),
+    getMasterclassMap(courseIds),
+  ]);
+
+  return courses.map((course) => ({
+    ...course,
+    sections: sectionsMap[course.id] || [],
+    masterclass_details:
+      course.course_type === "masterclass"
+        ? masterclassMap[course.id] || null
+        : null,
+  }));
+}
+
 const createCourse = async (req, res) => {
   try {
     const {
@@ -77,6 +141,7 @@ const createCourse = async (req, res) => {
       is_published,
       tags,
       price_without_discount,
+      course_type, // ✅ added
     } = req.body;
 
     const file = req.file;
@@ -115,16 +180,20 @@ const createCourse = async (req, res) => {
           created_by: req.user.id,
           tags,
           price_without_discount,
+          course_type: course_type || "course", // ✅ default support
         },
       ])
       .select();
 
     if (error) throw error;
 
+    // ✅ Enrich response with sections + masterclass details
+    const [enrichedCourse] = await enrichCourses([data[0]]);
+
     return res.status(201).json({
       success: true,
       message: "Course created successfully",
-      course: data[0],
+      course: enrichedCourse,
     });
   } catch (err) {
     console.error("Error creating course:", err.message);
@@ -145,11 +214,14 @@ const getAllCourses = async (req, res) => {
 
     if (error) throw error;
 
+    // ✅ Add sections + masterclass details
+    const enrichedCourses = await enrichCourses(courses || []);
+
     res.status(200).json({
       success: true,
       message: "Courses fetched successfully",
-      count: courses.length,
-      data: courses,
+      count: enrichedCourses.length,
+      data: enrichedCourses,
     });
   } catch (error) {
     console.error("Get all courses error:", error);
@@ -180,20 +252,13 @@ const getCourseById = async (req, res) => {
       throw courseError;
     }
 
-    const { data: sectionsData, error: sectionError } = await supabase
-      .from("course_sections")
-      .select("section_type")
-      .eq("course_id", id);
-
-    if (sectionError) throw sectionError;
-
-    const sections = sectionsData?.map((s) => s.section_type) || [];
-    const courseWithSections = { ...course, sections };
+    // ✅ Add sections + masterclass details
+    const [enrichedCourse] = await enrichCourses([course]);
 
     res.status(200).json({
       success: true,
       message: "Course fetched successfully",
-      data: courseWithSections,
+      data: enrichedCourse,
     });
   } catch (error) {
     console.error("❌ Get course by ID error:", error);
@@ -218,7 +283,7 @@ const getEnrolledCourses = async (req, res) => {
     const { data: courses, error: courseError } = await supabase
       .from("courses")
       .select(
-        "id, course_name, description, price, image, category, level, language, duration, is_published, created_by, students_enrolled, rating, tags, created_at, updated_at",
+        "id, course_name, description, price, image, category, level, language, duration, is_published, created_by, students_enrolled, rating, tags, created_at, updated_at, price_without_discount, course_type",
       )
       .contains("students_enrolled", [Number(userId)])
       .order("created_at", { ascending: true });
@@ -234,31 +299,14 @@ const getEnrolledCourses = async (req, res) => {
       });
     }
 
-    const courseIds = courses.map((c) => c.id);
-
-    const { data: sectionsData, error: sectionError } = await supabase
-      .from("course_sections")
-      .select("course_id, section_type")
-      .in("course_id", courseIds);
-
-    if (sectionError) throw sectionError;
-
-    const sectionsMap = sectionsData.reduce((acc, row) => {
-      if (!acc[row.course_id]) acc[row.course_id] = [];
-      acc[row.course_id].push(row.section_type);
-      return acc;
-    }, {});
-
-    const coursesWithSections = courses.map((course) => ({
-      ...course,
-      sections: sectionsMap[course.id] || [],
-    }));
+    // ✅ Add sections + masterclass details
+    const enrichedCourses = await enrichCourses(courses);
 
     res.status(200).json({
       success: true,
       message: "Enrolled courses fetched successfully",
-      count: coursesWithSections.length,
-      data: coursesWithSections,
+      count: enrichedCourses.length,
+      data: enrichedCourses,
     });
   } catch (error) {
     console.error("❌ Get enrolled courses error:", error);
@@ -283,6 +331,7 @@ export const updateCourse = async (req, res) => {
       is_published,
       tags,
       price_without_discount,
+      course_type, // ✅ added
     } = req.body;
 
     const { data: existingCourse, error: fetchError } = await supabase
@@ -305,7 +354,7 @@ export const updateCourse = async (req, res) => {
       const uploaded = await uploadCourseImage(req.file);
       imageUrl = uploaded.url;
 
-      // Optional: delete old image after new upload succeeds
+      // ✅ Delete old image only after new image upload succeeds
       if (existingCourse.image) {
         try {
           await deleteCourseImageFromS3(existingCourse.image);
@@ -328,6 +377,7 @@ export const updateCourse = async (req, res) => {
         is_published,
         tags,
         price_without_discount,
+        course_type: course_type || existingCourse.course_type, // ✅ preserve or update
         image: imageUrl,
         updated_at: new Date(),
       })
@@ -336,10 +386,13 @@ export const updateCourse = async (req, res) => {
 
     if (error) throw error;
 
+    // ✅ Enrich response with sections + masterclass details
+    const [enrichedCourse] = await enrichCourses([data[0]]);
+
     res.status(200).json({
       success: true,
       message: "Course updated successfully",
-      course: data[0],
+      course: enrichedCourse,
     });
   } catch (error) {
     console.error("Update course error:", error.message);
