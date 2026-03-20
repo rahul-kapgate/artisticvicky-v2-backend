@@ -21,6 +21,7 @@ import adminBillingRouter from "./routes/adminBillingRoutes.js";
 import coursePaymentRoutes from "./routes/coursePaymentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import masterclassRoutes from "./routes/masterclassRoutes.js";
+import certificateRoutes from "./routes/certificateRoutes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -51,6 +52,7 @@ app.use("/api/invoice", adminBillingRouter);
 app.use("/api/course-payments", coursePaymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/masterclass", masterclassRoutes);
+app.use("/api/certificate", certificateRoutes);
 // 🧱 Error Handler
 // app.use(errorHandler);
 
