@@ -184,7 +184,7 @@ export function generateCertificatePdfBuffer({
       .font("Helvetica-Bold")
       .fontSize(14)
       .fillColor(burgundy)
-      .text("ARTISTIC VICKY ACADEMY", 0, 45, {
+      .text("ARTISTIC VICKY", 0, 45, {
         align: "center",
       });
 
