@@ -1,4 +1,14 @@
 import PDFDocument from "pdfkit";
+import path from "path";
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const SIGNATURE_PATH = path.resolve(
+  __dirname,
+  "../assets/signatures/vickey-signature.png"
+);
 
 export function generateCertificatePdfBuffer({
   certificateNumber,
@@ -139,21 +149,6 @@ export function generateCertificatePdfBuffer({
 
     // Background
     doc.rect(0, 0, pageWidth, pageHeight).fill(light);
-
-    // Watermark
-    // doc.save();
-    // doc.opacity(0.05);
-    // doc.fillColor(navy).circle(centerX, pageHeight / 2 - 20, 120).fill();
-    // doc.opacity(0.08);
-    // doc
-    //   .font("Helvetica-Bold")
-    //   .fontSize(82)
-    //   .fillColor(gold)
-    //   .text("AV", centerX - 60, pageHeight / 2 - 50, {
-    //     width: 120,
-    //     align: "center",
-    //   });
-    // doc.restore();
 
     // Borders
     doc
@@ -314,6 +309,28 @@ export function generateCertificatePdfBuffer({
 
     // Seal
     drawSeal(centerX, 450);
+
+    // Signature image
+    try {
+      const signatureBoxX = pageWidth - 245;
+      const signatureBoxY = 480;
+      const signatureBoxWidth = 150;
+      const signatureImageWidth = 130;
+      const signatureImageHeight = 50;
+
+      doc.image(
+        SIGNATURE_PATH,
+        signatureBoxX + (signatureBoxWidth - signatureImageWidth) / 2,
+        signatureBoxY,
+        {
+          fit: [signatureImageWidth, signatureImageHeight],
+          align: "center",
+          valign: "center",
+        }
+      );
+    } catch (error) {
+      console.error("Failed to load signature image:", error);
+    }
 
     // Signature area
     doc
