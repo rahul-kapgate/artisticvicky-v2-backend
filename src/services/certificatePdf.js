@@ -241,7 +241,7 @@ export function generateCertificatePdfBuffer({
         {
           align: "center",
           width: pageWidth - 240,
-        }
+        },
       );
 
     // Course box
@@ -278,13 +278,11 @@ export function generateCertificatePdfBuffer({
           width: pageWidth - 270,
           align: "center",
           lineGap: 2,
-        }
+        },
       );
 
     // Meta boxes
-    doc
-      .roundedRect(80, 425, 185, 50, 8)
-      .fillAndStroke("#FFFFFF", softGold);
+    doc.roundedRect(80, 425, 185, 50, 8).fillAndStroke("#FFFFFF", softGold);
 
     doc
       .font("Helvetica-Bold")
@@ -318,31 +316,6 @@ export function generateCertificatePdfBuffer({
     drawSeal(centerX, 450);
 
     // Signature area
-    doc
-      .moveTo(95, 515)
-      .lineTo(245, 515)
-      .lineWidth(1)
-      .strokeColor(gray)
-      .stroke();
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(11)
-      .fillColor(navy)
-      .text("Authorized Signature", 95, 522, {
-        width: 150,
-        align: "center",
-      });
-
-    doc
-      .font("Helvetica")
-      .fontSize(9)
-      .fillColor(gray)
-      .text("Academic Coordinator", 95, 538, {
-        width: 150,
-        align: "center",
-      });
-
     doc
       .moveTo(pageWidth - 245, 515)
       .lineTo(pageWidth - 95, 515)
