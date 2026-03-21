@@ -1,13 +1,18 @@
 import PDFDocument from "pdfkit";
 import path from "path";
-import { fileURLToPath } from "url"
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SIGNATURE_PATH = path.resolve(
   __dirname,
-  "../assets/signatures/vickey-signature.png"
+  "../assets/signatures/vickey-signature.png",
+);
+
+const LOGO_PATH = path.resolve(
+  __dirname,
+  "../assets/logos/artistic-vickey-logo.png",
 );
 
 export function generateCertificatePdfBuffer({
@@ -149,6 +154,17 @@ export function generateCertificatePdfBuffer({
 
     // Background
     doc.rect(0, 0, pageWidth, pageHeight).fill(light);
+
+    // Top-left logo
+    try {
+      doc.image(LOGO_PATH, 48, 40, {
+        fit: [75, 75],
+        align: "left",
+        valign: "top",
+      });
+    } catch (error) {
+      console.error("Failed to load logo image:", error);
+    }
 
     // Borders
     doc
@@ -326,7 +342,7 @@ export function generateCertificatePdfBuffer({
           fit: [signatureImageWidth, signatureImageHeight],
           align: "center",
           valign: "center",
-        }
+        },
       );
     } catch (error) {
       console.error("Failed to load signature image:", error);
