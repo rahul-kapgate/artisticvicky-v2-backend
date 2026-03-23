@@ -71,13 +71,15 @@ async function deleteCourseImageFromS3(imageUrl) {
 }
 
 const parseBoolean = (value, defaultValue = false) => {
-  if (value === undefined || value === null || value === "") return defaultValue;
+  if (value === undefined || value === null || value === "")
+    return defaultValue;
   if (typeof value === "boolean") return value;
   return String(value).toLowerCase() === "true";
 };
 
 const parseNumber = (value, defaultValue = null) => {
-  if (value === undefined || value === null || value === "") return defaultValue;
+  if (value === undefined || value === null || value === "")
+    return defaultValue;
   const num = Number(value);
   return Number.isNaN(num) ? defaultValue : num;
 };
@@ -121,6 +123,7 @@ export const createMasterclass = async (req, res) => {
       ppt_file_url,
       ppt_file_name,
       masterclass_status,
+      recording_link,
     } = req.body;
 
     const file = req.file;
@@ -194,6 +197,7 @@ export const createMasterclass = async (req, res) => {
           ppt_file_url: ppt_file_url || null,
           ppt_file_name: ppt_file_name || null,
           masterclass_status: masterclass_status || "draft",
+          recording_link: recording_link || null,
         },
       ])
       .select()
@@ -266,6 +270,7 @@ export const updateMasterclass = async (req, res) => {
       ppt_file_url,
       ppt_file_name,
       masterclass_status,
+      recording_link,
     } = req.body;
 
     const { data: existingCourse, error: fetchCourseError } = await supabase
@@ -376,6 +381,10 @@ export const updateMasterclass = async (req, res) => {
             : existingDetails.ppt_file_name,
         masterclass_status:
           masterclass_status ?? existingDetails.masterclass_status,
+        recording_link:
+          recording_link !== undefined
+            ? recording_link || null
+            : existingDetails.recording_link,
         updated_at: new Date().toISOString(),
       })
       .eq("course_id", id)
@@ -406,10 +415,12 @@ export const getAllMasterclasses = async (req, res) => {
   try {
     const { data: masterclasses, error } = await supabase
       .from("courses")
-      .select(`
+      .select(
+        `
         *,
         masterclass_details (*)
-      `)
+      `,
+      )
       .eq("course_type", "masterclass")
       .order("created_at", { ascending: false });
 
@@ -431,17 +442,18 @@ export const getAllMasterclasses = async (req, res) => {
   }
 };
 
-
 export const getMasterclassById = async (req, res) => {
   try {
     const { id } = req.params;
 
     const { data: masterclass, error } = await supabase
       .from("courses")
-      .select(`
+      .select(
+        `
         *,
         masterclass_details (*)
-      `)
+      `,
+      )
       .eq("id", id)
       .eq("course_type", "masterclass")
       .single();
