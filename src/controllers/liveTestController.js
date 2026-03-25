@@ -693,12 +693,20 @@ export const getLiveTestResults = async (req, res) => {
     if (studentIds.length > 0) {
       const { data: users, error: usersError } = await supabase
         .from("users")
-        .select("id, user_name, name, email, mobile")
+        .select("id, user_name, email, mobile")
         .in("id", studentIds);
 
       if (usersError) throw usersError;
 
-      usersMap = new Map((users || []).map((user) => [user.id, user]));
+     usersMap = new Map(
+    (users || []).map((user) => [
+      user.id,
+      {
+        ...user,
+        name: user.user_name || "", 
+      },
+    ])
+  );
     }
 
     const mergedResults = attempts.map((attempt) => ({
@@ -762,7 +770,15 @@ export const exportLiveTestResultsExcel = async (req, res) => {
 
       if (usersError) throw usersError;
 
-      usersMap = new Map((users || []).map((user) => [user.id, user]));
+      usersMap = new Map(
+    (users || []).map((user) => [
+      user.id,
+      {
+        ...user,
+        name: user.user_name || "", 
+      },
+    ])
+  );
     }
 
     const rows = attemptList.map((item, index) => {
