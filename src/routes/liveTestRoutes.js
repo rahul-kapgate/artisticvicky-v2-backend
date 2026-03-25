@@ -11,6 +11,8 @@ import {
   getAllLiveTestsAdmin,
   getLiveTestResults,
   exportLiveTestResultsExcel,
+  startLiveTest,
+  getLiveTestSession
 } from "../controllers/liveTestController.js";
 
 const router = express.Router();
