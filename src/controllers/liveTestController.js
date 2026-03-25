@@ -346,36 +346,64 @@ export const getLiveTestResults = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data, error } = await supabase
+    const { data: attempts, error: attemptsError } = await supabase
       .from("live_test_attempts")
       .select(`
         id,
         student_id,
         score,
         total_questions,
-        submitted_at,
-        users (
-          id,
-          user_name,
-          email,
-          mobile
-        )
+        submitted_at
       `)
       .eq("live_test_id", id)
       .order("submitted_at", { ascending: false });
 
-    if (error) throw error;
+    if (attemptsError) throw attemptsError;
+
+    if (!attempts || attempts.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "Live test results fetched successfully",
+        data: [],
+      });
+    }
+
+    const studentIds = [
+      ...new Set(
+        attempts
+          .map((item) => item.student_id)
+          .filter((value) => value !== null && value !== undefined)
+      ),
+    ];
+
+    let usersMap = new Map();
+
+    if (studentIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, user_name, name, email, mobile")
+        .in("id", studentIds);
+
+      if (usersError) throw usersError;
+
+      usersMap = new Map((users || []).map((user) => [user.id, user]));
+    }
+
+    const mergedResults = attempts.map((attempt) => ({
+      ...attempt,
+      users: usersMap.get(attempt.student_id) || null,
+    }));
 
     return res.status(200).json({
       success: true,
       message: "Live test results fetched successfully",
-      data: data || [],
+      data: mergedResults,
     });
   } catch (error) {
     console.error("getLiveTestResults error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -385,38 +413,59 @@ export const exportLiveTestResultsExcel = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: attempts, error } = await supabase
+    const { data: attempts, error: attemptsError } = await supabase
       .from("live_test_attempts")
       .select(`
         id,
         student_id,
         score,
         total_questions,
-        submitted_at,
-        users (
-          id,
-          user_name,
-          email,
-          mobile
-        )
+        submitted_at
       `)
       .eq("live_test_id", id)
       .order("submitted_at", { ascending: false });
 
-    if (error) throw error;
+    if (attemptsError) throw attemptsError;
 
-    const rows = (attempts || []).map((item, index) => ({
-      SrNo: index + 1,
-      StudentName: item.users?.user_name || "",
-      Email: item.users?.email || "",
-      Mobile: item.users?.mobile || "",
-      Score: item.score,
-      TotalQuestions: item.total_questions,
-      Percentage: item.total_questions
-        ? Number(((item.score / item.total_questions) * 100).toFixed(2))
-        : 0,
-      SubmittedAt: item.submitted_at,
-    }));
+    const attemptList = attempts || [];
+
+    const studentIds = [
+      ...new Set(
+        attemptList
+          .map((item) => item.student_id)
+          .filter((value) => value !== null && value !== undefined)
+      ),
+    ];
+
+    let usersMap = new Map();
+
+    if (studentIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("id, user_name, name, email, mobile")
+        .in("id", studentIds);
+
+      if (usersError) throw usersError;
+
+      usersMap = new Map((users || []).map((user) => [user.id, user]));
+    }
+
+    const rows = attemptList.map((item, index) => {
+      const user = usersMap.get(item.student_id);
+
+      return {
+        SrNo: index + 1,
+        StudentName: user?.user_name || user?.name || "",
+        Email: user?.email || "",
+        Mobile: user?.mobile || "",
+        Score: item.score,
+        TotalQuestions: item.total_questions,
+        Percentage: item.total_questions
+          ? Number(((item.score / item.total_questions) * 100).toFixed(2))
+          : 0,
+        SubmittedAt: item.submitted_at || "",
+      };
+    });
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -441,7 +490,7 @@ export const exportLiveTestResultsExcel = async (req, res) => {
     console.error("exportLiveTestResultsExcel error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
