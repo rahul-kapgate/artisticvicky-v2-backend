@@ -826,3 +826,149 @@ export const exportLiveTestResultsExcel = async (req, res) => {
     });
   }
 };
+
+
+const normalizeOptions = (options = []) => {
+  if (!Array.isArray(options)) return [];
+
+  return options.map((opt, index) => {
+    if (typeof opt === "string" || typeof opt === "number") {
+      return {
+        id: index + 1,
+        text: String(opt),
+      };
+    }
+
+    return {
+      id: Number(
+        opt?.id ??
+          opt?.option_id ??
+          opt?.value ??
+          opt?.key ??
+          index + 1
+      ),
+      text:
+        opt?.text ??
+        opt?.option_text ??
+        opt?.label ??
+        opt?.value ??
+        opt?.title ??
+        "",
+    };
+  });
+};
+
+const getCorrectAnswerText = (question) => {
+  const options = normalizeOptions(question?.options || []);
+  const correctId = Number(question?.correct_option_id);
+
+  const matched = options.find((opt) => Number(opt.id) === correctId);
+  if (matched) return matched.text;
+
+  // fallback: if correct_option_id is 1-based position
+  if (correctId > 0 && options[correctId - 1]) {
+    return options[correctId - 1].text;
+  }
+
+  return "";
+};
+
+/* =========================
+   ADMIN: EXPORT QUESTIONS + ANSWERS EXCEL
+========================= */
+export const exportLiveTestQuestionsExcel = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: liveTest, error: liveTestError } = await supabase
+      .from("live_tests")
+      .select("id, title, question_snapshot, question_ids")
+      .eq("id", id)
+      .single();
+
+    if (liveTestError || !liveTest) {
+      return res.status(404).json({
+        success: false,
+        message: "Live test not found",
+      });
+    }
+
+    let questions = Array.isArray(liveTest.question_snapshot)
+      ? liveTest.question_snapshot
+      : [];
+
+    // fallback if snapshot is empty
+    if (
+      questions.length === 0 &&
+      Array.isArray(liveTest.question_ids) &&
+      liveTest.question_ids.length > 0
+    ) {
+      const { data: fetchedQuestions, error: questionsError } = await supabase
+        .from("mock_questions")
+        .select("*")
+        .in("id", liveTest.question_ids)
+        .order("id", { ascending: true });
+
+      if (questionsError) throw questionsError;
+
+      questions = fetchedQuestions || [];
+    }
+
+    if (!questions.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No questions found for this live test",
+      });
+    }
+
+    const rows = questions.map((q, index) => {
+      const options = normalizeOptions(q.options || []);
+
+      return {
+        SrNo: index + 1,
+        QuestionId: q.id ?? "",
+        Question: q.question_text ?? "",
+        Option1: options[0]?.text ?? "",
+        Option2: options[1]?.text ?? "",
+        Option3: options[2]?.text ?? "",
+        Option4: options[3]?.text ?? "",
+        AllOptions: options.map((opt, i) => `${i + 1}. ${opt.text}`).join(" | "),
+        CorrectOptionId: q.correct_option_id ?? "",
+        CorrectAnswer: getCorrectAnswerText(q),
+        Difficulty: q.difficulty ?? "",
+        ImageUrl: q.image_url ?? "",
+      };
+    });
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Questions Answer Key"
+    );
+
+    const buffer = XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx",
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=live-test-${id}-questions-answer-key.xlsx`
+    );
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("exportLiveTestQuestionsExcel error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};

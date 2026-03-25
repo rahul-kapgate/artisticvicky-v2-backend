@@ -12,6 +12,7 @@ import {
   getAllLiveTestsAdmin,
   getLiveTestResults,
   exportLiveTestResultsExcel,
+  exportLiveTestQuestionsExcel,
 } from "../controllers/liveTestController.js";
 
 const router = express.Router();
@@ -29,6 +30,12 @@ router.get(
   verifyToken,
   isAdmin,
   exportLiveTestResultsExcel
+);
+router.get(
+  "/admin/:id/questions/export",
+  verifyToken,
+  isAdmin,
+  exportLiveTestQuestionsExcel
 );
 
 /* =========================
