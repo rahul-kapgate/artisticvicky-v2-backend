@@ -16,6 +16,17 @@ const getUserIdFromReq = (req) => {
   return req.user?.id || req.user?.userId || null;
 };
 
+const shuffleArray = (arr = []) => {
+  const copy = [...arr];
+
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+
+  return copy;
+};
+
 /* =========================
    ADMIN: CREATE LIVE TEST
    default: draft + not published
@@ -59,21 +70,21 @@ export const createLiveTest = async (req, res) => {
       startAtDate.getTime() + parsedDuration * 60 * 1000
     );
 
-    const { data: questions, error: questionsError } = await supabase
+    const { data: allQuestions, error: questionsError } = await supabase
       .from("mock_questions")
       .select("*")
-      .eq("course_id", course_id)
-      .order("id", { ascending: true })
-      .limit(40);
+      .eq("course_id", course_id);
 
     if (questionsError) throw questionsError;
 
-    if (!questions || questions.length < 40) {
+    if (!allQuestions || allQuestions.length < 40) {
       return res.status(400).json({
         success: false,
         message: "At least 40 questions are required to create a live test",
       });
     }
+
+    const questions = shuffleArray(allQuestions).slice(0, 40);
 
     const payload = {
       title: title.trim(),
@@ -110,7 +121,7 @@ export const createLiveTest = async (req, res) => {
       message: error.message || "Internal server error",
     });
   }
-};
+};;
 
 /* =========================
    ADMIN: PUBLISH
