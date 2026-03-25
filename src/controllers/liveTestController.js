@@ -67,7 +67,7 @@ export const createLiveTest = async (req, res) => {
     }
 
     const endAtDate = new Date(
-      startAtDate.getTime() + parsedDuration * 60 * 1000
+      startAtDate.getTime() + parsedDuration * 60 * 1000,
     );
 
     const { data: allQuestions, error: questionsError } = await supabase
@@ -121,7 +121,7 @@ export const createLiveTest = async (req, res) => {
       message: error.message || "Internal server error",
     });
   }
-};;
+};
 
 /* =========================
    ADMIN: PUBLISH
@@ -227,7 +227,8 @@ export const getPublicLiveTests = async (req, res) => {
 
     const { data, error } = await supabase
       .from("live_tests")
-      .select(`
+      .select(
+        `
         id,
         title,
         description,
@@ -237,7 +238,8 @@ export const getPublicLiveTests = async (req, res) => {
         start_at,
         end_at,
         published_at
-      `)
+      `,
+      )
       .eq("is_public", true)
       .eq("status", "published")
       .gt("end_at", currentTime)
@@ -327,7 +329,7 @@ export const startLiveTest = async (req, res) => {
       const expiresAt = new Date(existingAttempt.expires_at || liveTest.end_at);
       const remainingSeconds = Math.max(
         0,
-        Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+        Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
       );
 
       return res.status(200).json({
@@ -350,7 +352,7 @@ export const startLiveTest = async (req, res) => {
             start_at: liveTest.start_at,
             end_at: liveTest.end_at,
             questions: sanitizeQuestionsForStudent(
-              liveTest.question_snapshot || []
+              liveTest.question_snapshot || [],
             ),
           },
         },
@@ -378,7 +380,7 @@ export const startLiveTest = async (req, res) => {
 
     const remainingSeconds = Math.max(
       0,
-      Math.floor((new Date(liveTest.end_at).getTime() - now.getTime()) / 1000)
+      Math.floor((new Date(liveTest.end_at).getTime() - now.getTime()) / 1000),
     );
 
     return res.status(200).json({
@@ -401,7 +403,7 @@ export const startLiveTest = async (req, res) => {
           start_at: liveTest.start_at,
           end_at: liveTest.end_at,
           questions: sanitizeQuestionsForStudent(
-            liveTest.question_snapshot || []
+            liveTest.question_snapshot || [],
           ),
         },
       },
@@ -465,7 +467,7 @@ export const getLiveTestSession = async (req, res) => {
     const expiresAt = new Date(attempt.expires_at || liveTest.end_at);
     let remainingSeconds = Math.max(
       0,
-      Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+      Math.floor((expiresAt.getTime() - now.getTime()) / 1000),
     );
     let currentStatus = attempt.status;
 
@@ -509,7 +511,7 @@ export const getLiveTestSession = async (req, res) => {
           start_at: liveTest.start_at,
           end_at: liveTest.end_at,
           questions: sanitizeQuestionsForStudent(
-            liveTest.question_snapshot || []
+            liveTest.question_snapshot || [],
           ),
         },
       },
@@ -555,10 +557,7 @@ export const submitLiveTest = async (req, res) => {
       });
     }
 
-    if (
-      attempt.status === "submitted" ||
-      attempt.status === "auto_submitted"
-    ) {
+    if (attempt.status === "submitted" || attempt.status === "auto_submitted") {
       return res.status(400).json({
         success: false,
         message: "This live test is already submitted",
@@ -586,7 +585,7 @@ export const submitLiveTest = async (req, res) => {
       (answers || []).map((a) => [
         Number(a.question_id),
         Number(a.selected_option_id),
-      ])
+      ]),
     );
 
     const snapshot = liveTest.question_snapshot || [];
@@ -670,14 +669,16 @@ export const getLiveTestResults = async (req, res) => {
 
     const { data: attempts, error: attemptsError } = await supabase
       .from("live_test_attempts")
-      .select(`
+      .select(
+        `
         id,
         student_id,
         score,
         total_questions,
         submitted_at,
         status
-      `)
+      `,
+      )
       .eq("live_test_id", id)
       .order("submitted_at", { ascending: false });
 
@@ -695,7 +696,7 @@ export const getLiveTestResults = async (req, res) => {
       ...new Set(
         attempts
           .map((item) => item.student_id)
-          .filter((value) => value !== null && value !== undefined)
+          .filter((value) => value !== null && value !== undefined),
       ),
     ];
 
@@ -709,15 +710,15 @@ export const getLiveTestResults = async (req, res) => {
 
       if (usersError) throw usersError;
 
-     usersMap = new Map(
-    (users || []).map((user) => [
-      user.id,
-      {
-        ...user,
-        name: user.user_name || "", 
-      },
-    ])
-  );
+      usersMap = new Map(
+        (users || []).map((user) => [
+          user.id,
+          {
+            ...user,
+            name: user.user_name || "",
+          },
+        ]),
+      );
     }
 
     const mergedResults = attempts.map((attempt) => ({
@@ -748,14 +749,16 @@ export const exportLiveTestResultsExcel = async (req, res) => {
 
     const { data: attempts, error: attemptsError } = await supabase
       .from("live_test_attempts")
-      .select(`
+      .select(
+        `
         id,
         student_id,
         score,
         total_questions,
         submitted_at,
         status
-      `)
+      `,
+      )
       .eq("live_test_id", id)
       .order("submitted_at", { ascending: false });
 
@@ -767,7 +770,7 @@ export const exportLiveTestResultsExcel = async (req, res) => {
       ...new Set(
         attemptList
           .map((item) => item.student_id)
-          .filter((value) => value !== null && value !== undefined)
+          .filter((value) => value !== null && value !== undefined),
       ),
     ];
 
@@ -776,20 +779,20 @@ export const exportLiveTestResultsExcel = async (req, res) => {
     if (studentIds.length > 0) {
       const { data: users, error: usersError } = await supabase
         .from("users")
-        .select("id, user_name, name, email, mobile")
+        .select("id, user_name, email, mobile")
         .in("id", studentIds);
 
       if (usersError) throw usersError;
 
       usersMap = new Map(
-    (users || []).map((user) => [
-      user.id,
-      {
-        ...user,
-        name: user.user_name || "", 
-      },
-    ])
-  );
+        (users || []).map((user) => [
+          user.id,
+          {
+            ...user,
+            name: user.user_name || "",
+          },
+        ]),
+      );
     }
 
     const rows = attemptList.map((item, index) => {
@@ -821,11 +824,11 @@ export const exportLiveTestResultsExcel = async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=live-test-${id}-results.xlsx`
+      `attachment; filename=live-test-${id}-results.xlsx`,
     );
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     return res.send(buffer);
@@ -837,7 +840,6 @@ export const exportLiveTestResultsExcel = async (req, res) => {
     });
   }
 };
-
 
 const normalizeOptions = (options = []) => {
   if (!Array.isArray(options)) return [];
@@ -852,11 +854,7 @@ const normalizeOptions = (options = []) => {
 
     return {
       id: Number(
-        opt?.id ??
-          opt?.option_id ??
-          opt?.value ??
-          opt?.key ??
-          index + 1
+        opt?.id ?? opt?.option_id ?? opt?.value ?? opt?.key ?? index + 1,
       ),
       text:
         opt?.text ??
@@ -943,7 +941,9 @@ export const exportLiveTestQuestionsExcel = async (req, res) => {
         Option2: options[1]?.text ?? "",
         Option3: options[2]?.text ?? "",
         Option4: options[3]?.text ?? "",
-        AllOptions: options.map((opt, i) => `${i + 1}. ${opt.text}`).join(" | "),
+        AllOptions: options
+          .map((opt, i) => `${i + 1}. ${opt.text}`)
+          .join(" | "),
         CorrectOptionId: q.correct_option_id ?? "",
         CorrectAnswer: getCorrectAnswerText(q),
         Difficulty: q.difficulty ?? "",
@@ -954,11 +954,7 @@ export const exportLiveTestQuestionsExcel = async (req, res) => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    XLSX.utils.book_append_sheet(
-      workbook,
-      worksheet,
-      "Questions Answer Key"
-    );
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Questions Answer Key");
 
     const buffer = XLSX.write(workbook, {
       type: "buffer",
@@ -967,11 +963,11 @@ export const exportLiveTestQuestionsExcel = async (req, res) => {
 
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=live-test-${id}-questions-answer-key.xlsx`
+      `attachment; filename=live-test-${id}-questions-answer-key.xlsx`,
     );
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     return res.send(buffer);
