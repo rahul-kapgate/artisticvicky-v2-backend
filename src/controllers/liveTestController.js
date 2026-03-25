@@ -1,7 +1,6 @@
-import { supabase } from "../config/supabaseClient.js";
 import XLSX from "xlsx";
+import { supabase } from "../config/supabaseClient.js";
 
-// helper
 const sanitizeQuestionsForStudent = (questions = []) =>
   questions.map((q) => ({
     id: q.id,
@@ -11,9 +10,20 @@ const sanitizeQuestionsForStudent = (questions = []) =>
     image_url: q.image_url ?? null,
   }));
 
-// ADMIN: create draft live test using first 40 questions
+const nowIso = () => new Date().toISOString();
+
+const getUserIdFromReq = (req) => {
+  return req.user?.id || req.user?.userId || null;
+};
+
+/* =========================
+   ADMIN: CREATE LIVE TEST
+   default: draft + not published
+========================= */
 export const createLiveTest = async (req, res) => {
   try {
+    const adminId = getUserIdFromReq(req);
+
     const {
       title,
       description = "",
@@ -29,15 +39,25 @@ export const createLiveTest = async (req, res) => {
       });
     }
 
-    const startDate = new Date(start_at);
-    if (Number.isNaN(startDate.getTime())) {
+    const parsedDuration = Number(duration_minutes);
+    if (!parsedDuration || parsedDuration <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "duration_minutes must be greater than 0",
+      });
+    }
+
+    const startAtDate = new Date(start_at);
+    if (Number.isNaN(startAtDate.getTime())) {
       return res.status(400).json({
         success: false,
         message: "Invalid start_at",
       });
     }
 
-    const endDate = new Date(startDate.getTime() + duration_minutes * 60 * 1000);
+    const endAtDate = new Date(
+      startAtDate.getTime() + parsedDuration * 60 * 1000
+    );
 
     const { data: questions, error: questionsError } = await supabase
       .from("mock_questions")
@@ -51,23 +71,23 @@ export const createLiveTest = async (req, res) => {
     if (!questions || questions.length < 40) {
       return res.status(400).json({
         success: false,
-        message: "At least 40 questions are required",
+        message: "At least 40 questions are required to create a live test",
       });
     }
 
     const payload = {
-      title,
-      description,
-      course_id,
-      duration_minutes,
+      title: title.trim(),
+      description: description?.trim?.() || "",
+      course_id: Number(course_id),
+      duration_minutes: parsedDuration,
       total_questions: 40,
       status: "draft",
       is_public: false,
-      start_at: startDate.toISOString(),
-      end_at: endDate.toISOString(),
+      start_at: startAtDate.toISOString(),
+      end_at: endAtDate.toISOString(),
       question_ids: questions.map((q) => q.id),
       question_snapshot: questions,
-      created_by: req.user?.id ?? null,
+      created_by: adminId,
     };
 
     const { data, error } = await supabase
@@ -87,22 +107,52 @@ export const createLiveTest = async (req, res) => {
     console.error("createLiveTest error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// ADMIN: publish live test
+/* =========================
+   ADMIN: PUBLISH
+========================= */
 export const publishLiveTest = async (req, res) => {
   try {
     const { id } = req.params;
+
+    const { data: existing, error: fetchError } = await supabase
+      .from("live_tests")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Live test not found",
+      });
+    }
+
+    if (!existing.start_at || !existing.end_at) {
+      return res.status(400).json({
+        success: false,
+        message: "start_at and end_at are required before publishing",
+      });
+    }
+
+    const snapshot = existing.question_snapshot || [];
+    if (snapshot.length < 40) {
+      return res.status(400).json({
+        success: false,
+        message: "Live test must contain 40 questions before publishing",
+      });
+    }
 
     const { data, error } = await supabase
       .from("live_tests")
       .update({
         status: "published",
         is_public: true,
-        published_at: new Date().toISOString(),
+        published_at: nowIso(),
       })
       .eq("id", id)
       .select()
@@ -119,12 +169,14 @@ export const publishLiveTest = async (req, res) => {
     console.error("publishLiveTest error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// ADMIN: unpublish live test
+/* =========================
+   ADMIN: UNPUBLISH
+========================= */
 export const unpublishLiveTest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -150,20 +202,35 @@ export const unpublishLiveTest = async (req, res) => {
     console.error("unpublishLiveTest error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// PUBLIC: list all published live tests for home page
+/* =========================
+   PUBLIC: ONLY PUBLISHED + NOT ENDED
+========================= */
 export const getPublicLiveTests = async (req, res) => {
   try {
+    const currentTime = nowIso();
+
     const { data, error } = await supabase
       .from("live_tests")
-      .select("id, title, description, course_id, duration_minutes, total_questions, published_at")
+      .select(`
+        id,
+        title,
+        description,
+        course_id,
+        duration_minutes,
+        total_questions,
+        start_at,
+        end_at,
+        published_at
+      `)
       .eq("is_public", true)
       .eq("status", "published")
-      .order("published_at", { ascending: false });
+      .gt("end_at", currentTime)
+      .order("start_at", { ascending: true });
 
     if (error) throw error;
 
@@ -176,17 +243,29 @@ export const getPublicLiveTests = async (req, res) => {
     console.error("getPublicLiveTests error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// STUDENT: fetch one live test
-export const getLiveTestById = async (req, res) => {
+/* =========================
+   STUDENT: START LIVE TEST
+   fixed window flow:
+   expires_at = liveTest.end_at
+========================= */
+export const startLiveTest = async (req, res) => {
   try {
     const { id } = req.params;
+    const studentId = getUserIdFromReq(req);
 
-    const { data, error } = await supabase
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { data: liveTest, error: testError } = await supabase
       .from("live_tests")
       .select("*")
       .eq("id", id)
@@ -194,37 +273,255 @@ export const getLiveTestById = async (req, res) => {
       .eq("status", "published")
       .single();
 
-    if (error) throw error;
+    if (testError || !liveTest) {
+      return res.status(404).json({
+        success: false,
+        message: "Live test not found",
+      });
+    }
+
+    const now = new Date();
+    const startAt = new Date(liveTest.start_at);
+    const endAt = new Date(liveTest.end_at);
+
+    if (now < startAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Live test has not started yet",
+        data: {
+          server_now: now.toISOString(),
+          start_at: liveTest.start_at,
+          end_at: liveTest.end_at,
+        },
+      });
+    }
+
+    if (now >= endAt) {
+      return res.status(400).json({
+        success: false,
+        message: "Live test has already ended",
+      });
+    }
+
+    const { data: existingAttempt, error: existingError } = await supabase
+      .from("live_test_attempts")
+      .select("*")
+      .eq("live_test_id", id)
+      .eq("student_id", studentId)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+
+    if (existingAttempt) {
+      const expiresAt = new Date(existingAttempt.expires_at || liveTest.end_at);
+      const remainingSeconds = Math.max(
+        0,
+        Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Live test session fetched successfully",
+        data: {
+          attempt_id: existingAttempt.id,
+          server_now: now.toISOString(),
+          started_at: existingAttempt.started_at,
+          expires_at: existingAttempt.expires_at,
+          remaining_seconds: remainingSeconds,
+          status: existingAttempt.status,
+          answers: existingAttempt.answers || [],
+          test: {
+            id: liveTest.id,
+            title: liveTest.title,
+            description: liveTest.description,
+            duration_minutes: liveTest.duration_minutes,
+            total_questions: liveTest.total_questions,
+            start_at: liveTest.start_at,
+            end_at: liveTest.end_at,
+            questions: sanitizeQuestionsForStudent(
+              liveTest.question_snapshot || []
+            ),
+          },
+        },
+      });
+    }
+
+    const { data: attempt, error: attemptError } = await supabase
+      .from("live_test_attempts")
+      .insert([
+        {
+          live_test_id: Number(id),
+          student_id: Number(studentId),
+          answers: [],
+          score: 0,
+          total_questions: Number(liveTest.total_questions || 40),
+          started_at: now.toISOString(),
+          expires_at: liveTest.end_at,
+          status: "in_progress",
+        },
+      ])
+      .select()
+      .single();
+
+    if (attemptError) throw attemptError;
+
+    const remainingSeconds = Math.max(
+      0,
+      Math.floor((new Date(liveTest.end_at).getTime() - now.getTime()) / 1000)
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Live test fetched successfully",
+      message: "Live test started successfully",
       data: {
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        duration_minutes: data.duration_minutes,
-        total_questions: data.total_questions,
-        questions: sanitizeQuestionsForStudent(data.question_snapshot),
+        attempt_id: attempt.id,
+        server_now: now.toISOString(),
+        started_at: attempt.started_at,
+        expires_at: attempt.expires_at,
+        remaining_seconds: remainingSeconds,
+        status: attempt.status,
+        answers: attempt.answers || [],
+        test: {
+          id: liveTest.id,
+          title: liveTest.title,
+          description: liveTest.description,
+          duration_minutes: liveTest.duration_minutes,
+          total_questions: liveTest.total_questions,
+          start_at: liveTest.start_at,
+          end_at: liveTest.end_at,
+          questions: sanitizeQuestionsForStudent(
+            liveTest.question_snapshot || []
+          ),
+        },
       },
     });
   } catch (error) {
-    console.error("getLiveTestById error:", error);
+    console.error("startLiveTest error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// STUDENT: submit live test
+/* =========================
+   STUDENT: GET SESSION
+========================= */
+export const getLiveTestSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const studentId = getUserIdFromReq(req);
+
+    if (!studentId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { data: liveTest, error: liveTestError } = await supabase
+      .from("live_tests")
+      .select("*")
+      .eq("id", id)
+      .eq("is_public", true)
+      .eq("status", "published")
+      .single();
+
+    if (liveTestError || !liveTest) {
+      return res.status(404).json({
+        success: false,
+        message: "Live test not found",
+      });
+    }
+
+    const { data: attempt, error: attemptError } = await supabase
+      .from("live_test_attempts")
+      .select("*")
+      .eq("live_test_id", id)
+      .eq("student_id", studentId)
+      .maybeSingle();
+
+    if (attemptError) throw attemptError;
+
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        message: "No active session found for this live test",
+      });
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(attempt.expires_at || liveTest.end_at);
+    let remainingSeconds = Math.max(
+      0,
+      Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+    );
+    let currentStatus = attempt.status;
+
+    if (
+      remainingSeconds === 0 &&
+      attempt.status !== "submitted" &&
+      attempt.status !== "auto_submitted" &&
+      attempt.status !== "expired"
+    ) {
+      const { data: updatedAttempt, error: updateError } = await supabase
+        .from("live_test_attempts")
+        .update({
+          status: "expired",
+        })
+        .eq("id", attempt.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      currentStatus = updatedAttempt.status;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Live test session fetched successfully",
+      data: {
+        attempt_id: attempt.id,
+        server_now: now.toISOString(),
+        started_at: attempt.started_at,
+        expires_at: attempt.expires_at,
+        remaining_seconds: remainingSeconds,
+        status: currentStatus,
+        answers: attempt.answers || [],
+        test: {
+          id: liveTest.id,
+          title: liveTest.title,
+          description: liveTest.description,
+          duration_minutes: liveTest.duration_minutes,
+          total_questions: liveTest.total_questions,
+          start_at: liveTest.start_at,
+          end_at: liveTest.end_at,
+          questions: sanitizeQuestionsForStudent(
+            liveTest.question_snapshot || []
+          ),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getLiveTestSession error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+/* =========================
+   STUDENT: SUBMIT
+========================= */
 export const submitLiveTest = async (req, res) => {
   try {
     const { id } = req.params;
-    const { answers } = req.body;
-    const student_id = req.user?.id;
+    const { answers = [] } = req.body;
+    const studentId = getUserIdFromReq(req);
 
-    if (!student_id) {
+    if (!studentId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
@@ -235,7 +532,7 @@ export const submitLiveTest = async (req, res) => {
       .from("live_test_attempts")
       .select("*")
       .eq("live_test_id", id)
-      .eq("student_id", student_id)
+      .eq("student_id", studentId)
       .maybeSingle();
 
     if (attemptError) throw attemptError;
@@ -247,16 +544,15 @@ export const submitLiveTest = async (req, res) => {
       });
     }
 
-    if (attempt.status === "submitted" || attempt.status === "auto_submitted") {
+    if (
+      attempt.status === "submitted" ||
+      attempt.status === "auto_submitted"
+    ) {
       return res.status(400).json({
         success: false,
         message: "This live test is already submitted",
       });
     }
-
-    const now = new Date();
-    const expiresAt = new Date(attempt.expires_at);
-    const isExpired = now > expiresAt;
 
     const { data: liveTest, error: liveTestError } = await supabase
       .from("live_tests")
@@ -264,15 +560,25 @@ export const submitLiveTest = async (req, res) => {
       .eq("id", id)
       .single();
 
-    if (liveTestError) throw liveTestError;
+    if (liveTestError || !liveTest) {
+      return res.status(404).json({
+        success: false,
+        message: "Live test not found",
+      });
+    }
 
-    const snapshot = liveTest.question_snapshot || [];
+    const now = new Date();
+    const expiresAt = new Date(attempt.expires_at || liveTest.end_at);
+    const isExpired = now >= expiresAt;
+
     const answerMap = new Map(
       (answers || []).map((a) => [
         Number(a.question_id),
         Number(a.selected_option_id),
       ])
     );
+
+    const snapshot = liveTest.question_snapshot || [];
 
     let score = 0;
     for (const q of snapshot) {
@@ -289,8 +595,8 @@ export const submitLiveTest = async (req, res) => {
       .update({
         answers: answers || [],
         score,
-        status: finalStatus,
         submitted_at: now.toISOString(),
+        status: finalStatus,
       })
       .eq("id", attempt.id)
       .select()
@@ -312,12 +618,14 @@ export const submitLiveTest = async (req, res) => {
     console.error("submitLiveTest error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// ADMIN: list all live tests
+/* =========================
+   ADMIN: ALL LIVE TESTS
+========================= */
 export const getAllLiveTestsAdmin = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -336,12 +644,15 @@ export const getAllLiveTestsAdmin = async (req, res) => {
     console.error("getAllLiveTestsAdmin error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };
 
-// ADMIN: results
+/* =========================
+   ADMIN: RESULTS
+   manual join with users
+========================= */
 export const getLiveTestResults = async (req, res) => {
   try {
     const { id } = req.params;
@@ -353,7 +664,8 @@ export const getLiveTestResults = async (req, res) => {
         student_id,
         score,
         total_questions,
-        submitted_at
+        submitted_at,
+        status
       `)
       .eq("live_test_id", id)
       .order("submitted_at", { ascending: false });
@@ -408,7 +720,9 @@ export const getLiveTestResults = async (req, res) => {
   }
 };
 
-// ADMIN: export results as excel
+/* =========================
+   ADMIN: EXPORT EXCEL
+========================= */
 export const exportLiveTestResultsExcel = async (req, res) => {
   try {
     const { id } = req.params;
@@ -420,7 +734,8 @@ export const exportLiveTestResultsExcel = async (req, res) => {
         student_id,
         score,
         total_questions,
-        submitted_at
+        submitted_at,
+        status
       `)
       .eq("live_test_id", id)
       .order("submitted_at", { ascending: false });
@@ -463,6 +778,7 @@ export const exportLiveTestResultsExcel = async (req, res) => {
         Percentage: item.total_questions
           ? Number(((item.score / item.total_questions) * 100).toFixed(2))
           : 0,
+        Status: item.status || "",
         SubmittedAt: item.submitted_at || "",
       };
     });
@@ -491,262 +807,6 @@ export const exportLiveTestResultsExcel = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error",
-    });
-  }
-};
-
-export const startLiveTest = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const student_id = req.user?.id;
-
-    if (!student_id) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    const { data: liveTest, error: testError } = await supabase
-      .from("live_tests")
-      .select("*")
-      .eq("id", id)
-      .eq("status", "published")
-      .eq("is_public", true)
-      .single();
-
-    if (testError || !liveTest) {
-      return res.status(404).json({
-        success: false,
-        message: "Live test not found",
-      });
-    }
-
-    const now = new Date();
-    const startAt = new Date(liveTest.start_at);
-    const endAt = new Date(liveTest.end_at);
-
-    if (now < startAt) {
-      return res.status(400).json({
-        success: false,
-        message: "Live test has not started yet",
-        data: {
-          start_at: liveTest.start_at,
-          server_now: now.toISOString(),
-        },
-      });
-    }
-
-    if (now > endAt) {
-      return res.status(400).json({
-        success: false,
-        message: "Live test has already ended",
-      });
-    }
-
-    // Resume existing attempt if present
-    const { data: existingAttempt } = await supabase
-      .from("live_test_attempts")
-      .select("*")
-      .eq("live_test_id", id)
-      .eq("student_id", student_id)
-      .in("status", ["in_progress", "submitted", "auto_submitted"])
-      .maybeSingle();
-
-    if (existingAttempt) {
-      const expiresAt = new Date(existingAttempt.expires_at);
-      const remainingSeconds = Math.max(
-        0,
-        Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
-      );
-
-      return res.status(200).json({
-        success: true,
-        message: "Live test session fetched successfully",
-        data: {
-          attempt_id: existingAttempt.id,
-          server_now: now.toISOString(),
-          started_at: existingAttempt.started_at,
-          expires_at: existingAttempt.expires_at,
-          remaining_seconds: remainingSeconds,
-          status: existingAttempt.status,
-          test: {
-            id: liveTest.id,
-            title: liveTest.title,
-            description: liveTest.description,
-            duration_minutes: liveTest.duration_minutes,
-            total_questions: liveTest.total_questions,
-            questions: sanitizeQuestionsForStudent(liveTest.question_snapshot),
-          },
-        },
-      });
-    }
-
-    const calculatedExpiry = new Date(
-      now.getTime() + liveTest.duration_minutes * 60 * 1000
-    );
-
-    const expiresAt =
-      calculatedExpiry > endAt ? endAt : calculatedExpiry;
-
-    const { data: attempt, error: attemptError } = await supabase
-      .from("live_test_attempts")
-      .insert([
-        {
-          live_test_id: Number(id),
-          student_id: Number(student_id),
-          answers: [],
-          score: 0,
-          total_questions: liveTest.total_questions || 40,
-          started_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-          status: "in_progress",
-        },
-      ])
-      .select()
-      .single();
-
-    if (attemptError) throw attemptError;
-
-    const remainingSeconds = Math.max(
-      0,
-      Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Live test started successfully",
-      data: {
-        attempt_id: attempt.id,
-        server_now: now.toISOString(),
-        started_at: attempt.started_at,
-        expires_at: attempt.expires_at,
-        remaining_seconds: remainingSeconds,
-        status: attempt.status,
-        test: {
-          id: liveTest.id,
-          title: liveTest.title,
-          description: liveTest.description,
-          duration_minutes: liveTest.duration_minutes,
-          total_questions: liveTest.total_questions,
-          questions: sanitizeQuestionsForStudent(liveTest.question_snapshot),
-        },
-      },
-    });
-  } catch (error) {
-    console.error("startLiveTest error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
-
-export const getLiveTestSession = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const student_id = req.user?.id;
-
-    if (!student_id) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
-
-    // get live test
-    const { data: liveTest, error: liveTestError } = await supabase
-      .from("live_tests")
-      .select("*")
-      .eq("id", id)
-      .eq("status", "published")
-      .eq("is_public", true)
-      .single();
-
-    if (liveTestError || !liveTest) {
-      return res.status(404).json({
-        success: false,
-        message: "Live test not found",
-      });
-    }
-
-    // get student attempt
-    const { data: attempt, error: attemptError } = await supabase
-      .from("live_test_attempts")
-      .select("*")
-      .eq("live_test_id", id)
-      .eq("student_id", student_id)
-      .maybeSingle();
-
-    if (attemptError) throw attemptError;
-
-    if (!attempt) {
-      return res.status(404).json({
-        success: false,
-        message: "No active session found for this live test",
-      });
-    }
-
-    const now = new Date();
-    const expiresAt = new Date(attempt.expires_at);
-    let remainingSeconds = Math.max(
-      0,
-      Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
-    );
-
-    let currentStatus = attempt.status;
-
-    // auto-expire if time is over and not submitted yet
-    if (
-      remainingSeconds === 0 &&
-      attempt.status !== "submitted" &&
-      attempt.status !== "auto_submitted" &&
-      attempt.status !== "expired"
-    ) {
-      const { data: updatedAttempt, error: updateError } = await supabase
-        .from("live_test_attempts")
-        .update({
-          status: "expired",
-        })
-        .eq("id", attempt.id)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
-      currentStatus = updatedAttempt.status;
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Live test session fetched successfully",
-      data: {
-        attempt_id: attempt.id,
-        server_now: now.toISOString(),
-        started_at: attempt.started_at,
-        expires_at: attempt.expires_at,
-        remaining_seconds: remainingSeconds,
-        status: currentStatus,
-        answers: attempt.answers || [],
-        test: {
-          id: liveTest.id,
-          title: liveTest.title,
-          description: liveTest.description,
-          duration_minutes: liveTest.duration_minutes,
-          total_questions: liveTest.total_questions,
-          start_at: liveTest.start_at,
-          end_at: liveTest.end_at,
-          questions: sanitizeQuestionsForStudent(
-            liveTest.question_snapshot || []
-          ),
-        },
-      },
-    });
-  } catch (error) {
-    console.error("getLiveTestSession error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
     });
   }
 };
