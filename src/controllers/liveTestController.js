@@ -801,15 +801,11 @@ export const exportLiveTestResultsExcel = async (req, res) => {
       return {
         SrNo: index + 1,
         StudentName: user?.user_name || user?.name || "",
-        Email: user?.email || "",
-        Mobile: user?.mobile || "",
         Score: item.score,
         TotalQuestions: item.total_questions,
         Percentage: item.total_questions
           ? Number(((item.score / item.total_questions) * 100).toFixed(2))
           : 0,
-        Status: item.status || "",
-        SubmittedAt: item.submitted_at || "",
       };
     });
 
@@ -935,7 +931,6 @@ export const exportLiveTestQuestionsExcel = async (req, res) => {
 
       return {
         SrNo: index + 1,
-        QuestionId: q.id ?? "",
         Question: q.question_text ?? "",
         Option1: options[0]?.text ?? "",
         Option2: options[1]?.text ?? "",
