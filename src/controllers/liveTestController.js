@@ -592,3 +592,112 @@ export const startLiveTest = async (req, res) => {
     });
   }
 };
+
+export const getLiveTestSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student_id = req.user?.id;
+
+    if (!student_id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // get live test
+    const { data: liveTest, error: liveTestError } = await supabase
+      .from("live_tests")
+      .select("*")
+      .eq("id", id)
+      .eq("status", "published")
+      .eq("is_public", true)
+      .single();
+
+    if (liveTestError || !liveTest) {
+      return res.status(404).json({
+        success: false,
+        message: "Live test not found",
+      });
+    }
+
+    // get student attempt
+    const { data: attempt, error: attemptError } = await supabase
+      .from("live_test_attempts")
+      .select("*")
+      .eq("live_test_id", id)
+      .eq("student_id", student_id)
+      .maybeSingle();
+
+    if (attemptError) throw attemptError;
+
+    if (!attempt) {
+      return res.status(404).json({
+        success: false,
+        message: "No active session found for this live test",
+      });
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(attempt.expires_at);
+    let remainingSeconds = Math.max(
+      0,
+      Math.floor((expiresAt.getTime() - now.getTime()) / 1000)
+    );
+
+    let currentStatus = attempt.status;
+
+    // auto-expire if time is over and not submitted yet
+    if (
+      remainingSeconds === 0 &&
+      attempt.status !== "submitted" &&
+      attempt.status !== "auto_submitted" &&
+      attempt.status !== "expired"
+    ) {
+      const { data: updatedAttempt, error: updateError } = await supabase
+        .from("live_test_attempts")
+        .update({
+          status: "expired",
+        })
+        .eq("id", attempt.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      currentStatus = updatedAttempt.status;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Live test session fetched successfully",
+      data: {
+        attempt_id: attempt.id,
+        server_now: now.toISOString(),
+        started_at: attempt.started_at,
+        expires_at: attempt.expires_at,
+        remaining_seconds: remainingSeconds,
+        status: currentStatus,
+        answers: attempt.answers || [],
+        test: {
+          id: liveTest.id,
+          title: liveTest.title,
+          description: liveTest.description,
+          duration_minutes: liveTest.duration_minutes,
+          total_questions: liveTest.total_questions,
+          start_at: liveTest.start_at,
+          end_at: liveTest.end_at,
+          questions: sanitizeQuestionsForStudent(
+            liveTest.question_snapshot || []
+          ),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("getLiveTestSession error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
