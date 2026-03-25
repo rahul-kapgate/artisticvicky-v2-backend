@@ -22,6 +22,7 @@ import coursePaymentRoutes from "./routes/coursePaymentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import masterclassRoutes from "./routes/masterclassRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
+import liveTestRoutes from "./routes/liveTestRoutes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -53,6 +54,7 @@ app.use("/api/course-payments", coursePaymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/masterclass", masterclassRoutes);
 app.use("/api/certificate", certificateRoutes);
+app.use("/api/live-test", liveTestRoutes);
 // 🧱 Error Handler
 // app.use(errorHandler);
 

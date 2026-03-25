@@ -29,7 +29,8 @@
     "multer": "^2.0.2",
     "pdfkit": "^0.17.2",
     "razorpay": "^2.9.6",
-    "resend": "^6.5.2"
+    "resend": "^6.5.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
