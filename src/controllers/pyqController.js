@@ -39,7 +39,7 @@ export const getPYQQuestions = async (req, res) => {
 
     if (error) throw error;
 
-    console.log(data);
+    console.log("PQY");
 
     res.status(200).json({
       success: true,
