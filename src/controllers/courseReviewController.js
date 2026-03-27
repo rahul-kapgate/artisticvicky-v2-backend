@@ -572,3 +572,38 @@ export const getMyCourseReviewStatus = async (req, res) => {
     });
   }
 };
+
+export const getAdminCourseReviews = async (req, res) => {
+  try {
+    const status = String(req.query.status || "pending").toLowerCase();
+
+    let query = supabase
+      .from("course_reviews")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (status !== "all") {
+      query = query.eq("status", status);
+    }
+
+    const { data: reviews, error } = await query;
+
+    if (error) throw error;
+
+    const enrichedReviews = await enrichReviews(reviews || [], true);
+
+    return res.status(200).json({
+      success: true,
+      message: "Course reviews fetched successfully",
+      count: enrichedReviews.length,
+      data: enrichedReviews,
+    });
+  } catch (error) {
+    console.error("Get admin course reviews error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching course reviews",
+      error: error.message,
+    });
+  }
+};
