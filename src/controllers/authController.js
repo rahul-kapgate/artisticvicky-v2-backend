@@ -87,51 +87,63 @@ const signupInitiate = async (req, res) => {
   try {
     const { user_name, email, mobile, password } = req.body;
 
-    // 1️⃣ Validate input
     if (!user_name || !email || !mobile || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedMobile = String(mobile).replace(/\D/g, "");
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({ message: "Invalid email format" });
+    }
+
+    if (normalizedMobile.length !== 10) {
+      return res.status(400).json({ message: "Invalid mobile number" });
     }
 
     if (password.length < 8) {
       return res.status(400).json({ message: "Password too short" });
     }
 
-    // 2️⃣ Check if email already exists
-    const { data: existingUser } = await supabase
+    const { data: existingEmail } = await supabase
       .from("users")
-      .select("email")
-      .eq("email", email)
-      .single();
+      .select("id")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
 
-    if (existingUser) {
+    if (existingEmail) {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    // 3️⃣ Generate OTP
+    const { data: existingMobile } = await supabase
+      .from("users")
+      .select("id")
+      .eq("mobile", normalizedMobile)
+      .maybeSingle();
+
+    if (existingMobile) {
+      return res.status(409).json({ message: "Mobile already registered" });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // 4️⃣ Store OTP in email_verifications table
     await supabase.from("email_verifications").insert([
       {
-        email,
+        email: normalizedEmail,
         otp_hash: otpHash,
         user_name,
-        mobile,
+        mobile: normalizedMobile,
         password_hash: await bcrypt.hash(password, 10),
         expires_at: expiresAt.toISOString(),
         verified: false,
       },
     ]);
 
-    // 5️⃣ Send email with OTP
-    await sendOtpToEmail(email, otp);
+    await sendOtpToEmail(normalizedEmail, otp);
 
     res.status(201).json({
       message: "Verification code sent to email",
@@ -139,6 +151,13 @@ const signupInitiate = async (req, res) => {
     });
   } catch (error) {
     console.error("Signup error:", error);
+
+    if (error.code === "23505") {
+      return res
+        .status(409)
+        .json({ message: "Email or mobile already registered" });
+    }
+
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -147,15 +166,16 @@ const signupVerify = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    if (!email || !otp) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    if (!normalizedEmail || !otp) {
       return res.status(400).json({ message: "Email and OTP are required" });
     }
 
-    // 1️⃣ Fetch OTP record
     const { data: record, error } = await supabase
       .from("email_verifications")
       .select("*")
-      .eq("email", email)
+      .eq("email", normalizedEmail)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -164,34 +184,35 @@ const signupVerify = async (req, res) => {
       return res.status(404).json({ message: "OTP record not found" });
     }
 
-    // 2️⃣ Check expiry
     if (new Date() > new Date(record.expires_at)) {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    // 3️⃣ Compare OTP hash
     const otpHash = crypto.createHash("sha256").update(otp).digest("hex");
     if (otpHash !== record.otp_hash) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // 4️⃣ Insert user into main users table
     const { error: insertError } = await supabase.from("users").insert([
       {
         user_name: record.user_name,
-        email: record.email,
-        mobile: record.mobile,
+        email: String(record.email).trim().toLowerCase(),
+        mobile: String(record.mobile).replace(/\D/g, ""),
         password: record.password_hash,
       },
     ]);
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      if (insertError.code === "23505") {
+        return res.status(409).json({ message: "Email or mobile already registered" });
+      }
+      throw insertError;
+    }
 
-    // 5️⃣ Mark OTP record as verified
     await supabase
       .from("email_verifications")
       .update({ verified: true })
-      .eq("email", email);
+      .eq("email", normalizedEmail);
 
     res.status(201).json({ message: "Signup successful" });
   } catch (error) {
