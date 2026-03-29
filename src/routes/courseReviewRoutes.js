@@ -4,7 +4,8 @@ import {
   getCourseReviewsByCourse,
   updateCourseReview,
   deleteCourseReview,
-  getMyCourseReviewStatus
+  getMyCourseReviewStatus,
+  getHomePageCourseReviews
 } from "../controllers/courseReviewController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 
