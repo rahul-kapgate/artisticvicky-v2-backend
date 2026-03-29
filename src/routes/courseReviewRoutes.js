@@ -17,5 +17,8 @@ router.delete("/:id", verifyToken, deleteCourseReview);
 
 router.get("/me/course/:courseId", verifyToken, getMyCourseReviewStatus);
 
+router.get("/home-page", getHomePageCourseReviews);
+
+
 
 export default router;

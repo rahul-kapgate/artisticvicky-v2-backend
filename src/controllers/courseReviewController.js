@@ -21,7 +21,7 @@ const getCourseByIdInternal = async (courseId) => {
     .from("courses")
     .select("id, course_name, students_enrolled, rating")
     .eq("id", courseId)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -32,7 +32,7 @@ const getReviewByIdInternal = async (reviewId) => {
     .from("course_reviews")
     .select("*")
     .eq("id", reviewId)
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -81,6 +81,28 @@ const enrichReviews = async (reviews = [], includeCourse = false) => {
     ...review,
     user: userMap[review.user_id] || null,
     course: includeCourse ? courseMap[review.course_id] || null : undefined,
+  }));
+};
+
+const sanitizePublicHomeReviews = (reviews = []) => {
+  return reviews.map((review) => ({
+    id: review.id,
+    course_id: review.course_id,
+    rating: review.rating,
+    review_text: review.review_text,
+    created_at: review.created_at,
+    user: review.user
+      ? {
+          id: review.user.id,
+          user_name: review.user.user_name,
+        }
+      : null,
+    course: review.course
+      ? {
+          id: review.course.id,
+          course_name: review.course.course_name,
+        }
+      : null,
   }));
 };
 
@@ -173,6 +195,8 @@ export const createCourseReview = async (req, res) => {
       rating: Number(rating),
       review_text: review_text?.trim() || null,
       status: REVIEW_STATUS.PENDING,
+      is_approved: false,
+      show_on_home: false,
     };
 
     const { data, error } = await supabase
@@ -282,6 +306,8 @@ export const updateCourseReview = async (req, res) => {
     const updates = {
       updated_at: new Date().toISOString(),
       status: REVIEW_STATUS.PENDING,
+      is_approved: false,
+      show_on_home: false,
     };
 
     if (rating !== undefined) {
@@ -431,6 +457,7 @@ export const approveCourseReview = async (req, res) => {
       .from("course_reviews")
       .update({
         status: REVIEW_STATUS.APPROVED,
+        is_approved: true,
         updated_at: new Date().toISOString(),
       })
       .eq("id", reviewId)
@@ -484,6 +511,8 @@ export const rejectCourseReview = async (req, res) => {
       .from("course_reviews")
       .update({
         status: REVIEW_STATUS.REJECTED,
+        is_approved: false,
+        show_on_home: false,
         updated_at: new Date().toISOString(),
       })
       .eq("id", reviewId)
@@ -511,6 +540,103 @@ export const rejectCourseReview = async (req, res) => {
   }
 };
 
+export const toggleCourseReviewHomeVisibility = async (req, res) => {
+  try {
+    const reviewId = Number(req.params.id);
+    const { show_on_home } = req.body;
+
+    if (!reviewId) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid review id is required",
+      });
+    }
+
+    if (typeof show_on_home !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "show_on_home must be true or false",
+      });
+    }
+
+    const review = await getReviewByIdInternal(reviewId);
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: "Review not found",
+      });
+    }
+
+    if (show_on_home && review.status !== REVIEW_STATUS.APPROVED) {
+      return res.status(400).json({
+        success: false,
+        message: "Only approved reviews can be shown on home page",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("course_reviews")
+      .update({
+        show_on_home,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", reviewId)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+
+    return res.status(200).json({
+      success: true,
+      message: show_on_home
+        ? "Review added to home page successfully"
+        : "Review removed from home page successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Toggle home page review visibility error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while updating home page visibility",
+      error: error.message,
+    });
+  }
+};
+
+export const getHomePageCourseReviews = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 6, 1), 20);
+
+    const { data: reviews, error } = await supabase
+      .from("course_reviews")
+      .select("*")
+      .eq("status", REVIEW_STATUS.APPROVED)
+      .eq("show_on_home", true)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+
+    const enrichedReviews = await enrichReviews(reviews || [], true);
+    const publicReviews = sanitizePublicHomeReviews(enrichedReviews);
+
+    return res.status(200).json({
+      success: true,
+      message: "Home page reviews fetched successfully",
+      count: publicReviews.length,
+      data: publicReviews,
+    });
+  } catch (error) {
+    console.error("Get home page course reviews error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching home page reviews",
+      error: error.message,
+    });
+  }
+};
+
 export const getMyCourseReviewStatus = async (req, res) => {
   try {
     const userId = Number(req.user?.id);
@@ -523,14 +649,17 @@ export const getMyCourseReviewStatus = async (req, res) => {
       });
     }
 
-    // 1) check course exists + enrollment
     const { data: course, error: courseError } = await supabase
       .from("courses")
       .select("id, students_enrolled")
       .eq("id", courseId)
-      .single();
+      .maybeSingle();
 
-    if (courseError || !course) {
+    if (courseError) {
+      throw courseError;
+    }
+
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Course not found",
@@ -541,7 +670,6 @@ export const getMyCourseReviewStatus = async (req, res) => {
       Array.isArray(course.students_enrolled) &&
       course.students_enrolled.map(Number).includes(userId);
 
-    // 2) get student's review for this course
     const { data: review, error: reviewError } = await supabase
       .from("course_reviews")
       .select("*")
@@ -576,6 +704,7 @@ export const getMyCourseReviewStatus = async (req, res) => {
 export const getAdminCourseReviews = async (req, res) => {
   try {
     const status = String(req.query.status || "pending").toLowerCase();
+    const showOnHome = req.query.show_on_home;
 
     let query = supabase
       .from("course_reviews")
@@ -584,6 +713,12 @@ export const getAdminCourseReviews = async (req, res) => {
 
     if (status !== "all") {
       query = query.eq("status", status);
+    }
+
+    if (showOnHome === "true") {
+      query = query.eq("show_on_home", true);
+    } else if (showOnHome === "false") {
+      query = query.eq("show_on_home", false);
     }
 
     const { data: reviews, error } = await query;

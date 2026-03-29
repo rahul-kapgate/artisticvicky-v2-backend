@@ -8,6 +8,7 @@ import {
   getPendingCourseReviews,
   approveCourseReview,
   rejectCourseReview,
+  toggleCourseReviewHomeVisibility,
 } from "../controllers/courseReviewController.js";
 
 const router = express.Router();
@@ -30,5 +31,11 @@ router.get("/course-reviews", verifyToken, isAdmin, getAdminCourseReviews);
 router.get("/course-reviews/pending", verifyToken, isAdmin, getPendingCourseReviews);
 router.patch("/course-reviews/:id/approve", verifyToken, isAdmin, approveCourseReview);
 router.patch("/course-reviews/:id/reject", verifyToken, isAdmin, rejectCourseReview);
+router.patch(
+  "/course-reviews/:id/home-visibility",
+  verifyToken,
+  isAdmin,
+  toggleCourseReviewHomeVisibility
+);
 
 export default router;
