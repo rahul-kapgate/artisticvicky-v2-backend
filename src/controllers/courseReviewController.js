@@ -608,6 +608,14 @@ export const getHomePageCourseReviews = async (req, res) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 6, 1), 20);
 
+     // Get total count of home-page reviews (no limit)
+    const { count: totalCount, error: countError } = await supabase
+      .from("course_reviews")
+      .select("*", { count: "exact", head: true })
+      .eq("status", REVIEW_STATUS.APPROVED)
+
+    if (countError) throw countError;
+
     const { data: reviews, error } = await supabase
       .from("course_reviews")
       .select("*")
@@ -624,7 +632,7 @@ export const getHomePageCourseReviews = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Home page reviews fetched successfully",
-      count, 
+      count: totalCount || 0,
       data: publicReviews,
     });
   } catch (error) {
