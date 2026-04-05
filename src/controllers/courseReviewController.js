@@ -624,7 +624,7 @@ export const getHomePageCourseReviews = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Home page reviews fetched successfully",
-      count: publicReviews.length,
+      count, 
       data: publicReviews,
     });
   } catch (error) {
