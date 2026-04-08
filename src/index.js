@@ -3,7 +3,7 @@ import app from "./app.js";
 import { supabase } from "./config/supabaseClient.js";
 
 dotenv.config();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 
 // Connect to DB 
 supabase;
