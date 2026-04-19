@@ -18,7 +18,7 @@ import sectionRoutes from "./routes/sectionRoutes.js"
 import videoRoutes from "./routes/videoRoutes.js";
 import studentArtWorkRoutes from "./routes/studentArtWorkRoutes.js"
 import adminBillingRouter from "./routes/adminBillingRoutes.js";
-import coursePaymentRoutes from "./routes/coursePaymentRoutes.js";
+// import coursePaymentRoutes from "./routes/coursePaymentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import masterclassRoutes from "./routes/masterclassRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
@@ -51,7 +51,7 @@ app.use("/api/section", sectionRoutes)
 app.use("/api/video", videoRoutes);
 app.use("/api/student-artwork", studentArtWorkRoutes);
 app.use("/api/invoice", adminBillingRouter);
-app.use("/api/course-payments", coursePaymentRoutes);
+// app.use("/api/course-payments", coursePaymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/masterclass", masterclassRoutes);
 app.use("/api/certificate", certificateRoutes);

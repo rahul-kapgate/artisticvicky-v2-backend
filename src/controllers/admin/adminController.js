@@ -1,4 +1,5 @@
-import { supabase } from "../config/supabaseClient.js";
+import { supabase } from "../../config/supabaseClient.js";
+import { issueInvoiceAndEnroll } from "../../services/invoiceService.js";
 
 // ✅ Get all users and their enrolled courses
 export const getUsersWithCourses = async (req, res) => {
@@ -40,48 +41,44 @@ export const getUsersWithCourses = async (req, res) => {
   }
 };
 
-// ✅ Enroll user in a specific course
+
 export const enrollUserInCourse = async (req, res) => {
   try {
-    const { userId, courseId } = req.body;
+    const { userId, courseId, amount, notes } = req.body;
 
-    if (!userId || !courseId) {
+    if (!userId || !courseId || amount === undefined) {
       return res.status(400).json({
         success: false,
-        message: "userId and courseId are required",
+        message: "userId, courseId and amount are required",
       });
     }
 
-    // Get existing students_enrolled
-    const { data: course, error: fetchError } = await supabase
-      .from("courses")
-      .select("students_enrolled")
-      .eq("id", courseId)
-      .single();
+    const numericAmount = Number(amount);
+    if (Number.isNaN(numericAmount) || numericAmount < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "amount must be a non-negative number",
+      });
+    }
 
-    if (fetchError) throw fetchError;
+    const result = await issueInvoiceAndEnroll({
+      userId,
+      courseId,
+      amount: numericAmount,
+      source: "manual",
+      notes: typeof notes === "string" ? notes.trim().slice(0, 500) : undefined,
+    });
 
-    const updatedArray = Array.isArray(course.students_enrolled)
-      ? [...new Set([...course.students_enrolled, userId])]
-      : [userId];
-
-    // Update course
-    const { error: updateError } = await supabase
-      .from("courses")
-      .update({ students_enrolled: updatedArray })
-      .eq("id", courseId);
-
-    if (updateError) throw updateError;
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: `User ${userId} successfully enrolled in course ${courseId}`,
+      message: "User enrolled and invoice sent",
+      data: result,
     });
   } catch (error) {
-    console.error("Enroll user error:", error);
-    res.status(500).json({
+    console.error("enrollUserInCourse error:", error);
+    return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: error.message || "Internal server error",
     });
   }
 };

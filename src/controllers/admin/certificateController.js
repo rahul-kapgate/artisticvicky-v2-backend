@@ -1,6 +1,6 @@
-import { supabase } from "../config/supabaseClient.js";
-import { generateCertificatePdfBuffer } from "../services/certificatePdf.js";
-import { sendCertificateEmail } from "../services/certificateEmail.js";
+import { supabase } from "../../config/supabaseClient.js";
+import { generateCertificatePdfBuffer } from "../../services/certificatePdf.js";
+import { sendCertificateEmail } from "../../services/certificateEmail.js";
 
 export const sendCertificateController = async (req, res) => {
   try {

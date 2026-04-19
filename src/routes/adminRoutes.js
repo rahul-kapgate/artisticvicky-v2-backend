@@ -1,8 +1,8 @@
 import express from "express";
-import { getUsersWithCourses, enrollUserInCourse, unenrollUserFromCourse, getDashboardStats, getAllUsers } from "../controllers/adminController.js";
+import { getUsersWithCourses, enrollUserInCourse, unenrollUserFromCourse, getDashboardStats, getAllUsers } from "../controllers/admin/adminController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
-import { getMockTestScore, getPyqTestData, getMockTestSummary } from "../controllers/adminMockTestReport.js";
+import { getMockTestScore, getPyqTestData, getMockTestSummary } from "../controllers/admin/adminMockTestReport.js";
 import {
   getAdminCourseReviews,
   getPendingCourseReviews,

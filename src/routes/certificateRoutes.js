@@ -3,7 +3,7 @@ import {
   sendCertificateController,
   getCertificatesController,
   getCertificateByIdController,
-} from "../controllers/certificateController.js";
+} from "../controllers/admin/certificateController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
 
