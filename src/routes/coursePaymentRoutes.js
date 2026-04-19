@@ -1,17 +1,17 @@
-// // src/routes/coursePaymentRoutes.js
-// import { Router } from "express";
-// import {
-//   createCourseOrder,
-//   verifyCoursePayment,
-// } from "../controllers/coursePaymentController.js";
-// import { verifyToken } from "../middlewares/authMiddleware.js";
+// src/routes/coursePaymentRoutes.js
+import { Router } from "express";
+import {
+  createCourseOrder,
+  verifyCoursePayment,
+} from "../controllers/coursePaymentController.js";
+import { verifyToken } from "../middlewares/authMiddleware.js";
 
-// const router = Router();
+const router = Router();
 
-// // user clicks "buy" → create order
-// router.post("/create-order", verifyToken, createCourseOrder);
+// User clicks "Buy" → backend creates a Razorpay order
+router.post("/create-order", verifyToken, createCourseOrder);
 
-// // Razorpay success handler → verify & auto-enroll
-// router.post("/verify", verifyToken, verifyCoursePayment);
+// Razorpay success callback on the frontend → backend verifies + enrolls + invoices
+router.post("/verify", verifyToken, verifyCoursePayment);
 
-// export default router;
+export default router;
