@@ -67,21 +67,21 @@ router.patch(
 router.post(
   "/courses/:courseId/users/:userId/block",
   verifyToken,
-  requireAdmin,
+  isAdmin,
   blockUserFromCourse,
 );
 
 router.post(
   "/courses/:courseId/users/:userId/unblock",
   verifyToken,
-  requireAdmin,
+  isAdmin,
   unblockUserFromCourse,
 );
 
 router.get(
   "/courses/:courseId/blocked-users",
   verifyToken,
-  requireAdmin,
+  isAdmin,
   getBlockedUsers,
 );
 
