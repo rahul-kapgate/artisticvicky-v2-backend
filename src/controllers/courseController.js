@@ -283,7 +283,7 @@ const getEnrolledCourses = async (req, res) => {
     const { data: courses, error: courseError } = await supabase
       .from("courses")
       .select(
-        "id, course_name, description, price, image, category, level, language, duration, is_published, created_by, students_enrolled, rating, tags, created_at, updated_at, price_without_discount, course_type",
+        "id, course_name, description, price, image, category, level, language, duration, is_published, created_by, students_enrolled, rating, tags, created_at, updated_at, price_without_discount, course_type, blocked_users",
       )
       .contains("students_enrolled", [Number(userId)])
       .order("created_at", { ascending: true });
