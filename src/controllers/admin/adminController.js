@@ -14,7 +14,7 @@ export const getUsersWithCourses = async (req, res) => {
     // Fetch all courses
     const { data: courses, error: courseError } = await supabase
       .from("courses")
-      .select("id, course_name, students_enrolled, price, category, rating");
+      .select("id, course_name, students_enrolled, price, category, rating, blocked_users");
 
     if (courseError) throw courseError;
 
