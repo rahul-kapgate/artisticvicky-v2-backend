@@ -41,7 +41,6 @@ export const getUsersWithCourses = async (req, res) => {
   }
 };
 
-
 export const enrollUserInCourse = async (req, res) => {
   try {
     const { userId, courseId, amount, notes } = req.body;
@@ -159,6 +158,110 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
+
+// Block a user from a course
+export const blockUserFromCourse = async (req, res) => {
+  try {
+    const { courseId, userId } = req.params;
+
+    // Fetch current blocked_users array
+    const { data: course, error: fetchErr } = await supabase
+      .from("courses")
+      .select("blocked_users")
+      .eq("id", courseId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+
+    const current = course.blocked_users || [];
+    if (current.includes(Number(userId))) {
+      return res.status(400).json({
+        success: false,
+        message: "User is already blocked for this course",
+      });
+    }
+
+    const updated = [...current, Number(userId)];
+
+    const { error: updateErr } = await supabase
+      .from("courses")
+      .update({ blocked_users: updated })
+      .eq("id", courseId);
+
+    if (updateErr) throw updateErr;
+
+    return res.status(200).json({
+      success: true,
+      message: "User blocked from this course",
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Unblock a user
+export const unblockUserFromCourse = async (req, res) => {
+  try {
+    const { courseId, userId } = req.params;
+
+    const { data: course, error: fetchErr } = await supabase
+      .from("courses")
+      .select("blocked_users")
+      .eq("id", courseId)
+      .single();
+
+    if (fetchErr) throw fetchErr;
+
+    const updated = (course.blocked_users || []).filter(
+      (id) => id !== Number(userId)
+    );
+
+    const { error: updateErr } = await supabase
+      .from("courses")
+      .update({ blocked_users: updated })
+      .eq("id", courseId);
+
+    if (updateErr) throw updateErr;
+
+    return res.status(200).json({
+      success: true,
+      message: "User unblocked for this course",
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// List blocked users for a course (with details)
+export const getBlockedUsers = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const { data: course, error } = await supabase
+      .from("courses")
+      .select("blocked_users")
+      .eq("id", courseId)
+      .single();
+
+    if (error) throw error;
+
+    const ids = course.blocked_users || [];
+    if (ids.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const { data: users, error: usersErr } = await supabase
+      .from("users")
+      .select("id, user_name, email, mobile")
+      .in("id", ids);
+
+    if (usersErr) throw usersErr;
+
+    return res.status(200).json({ success: true, data: users });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 
 
