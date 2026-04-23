@@ -24,6 +24,7 @@ import masterclassRoutes from "./routes/masterclassRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import liveTestRoutes from "./routes/liveTestRoutes.js";
 import courseReviewRoutes from "./routes/courseReviewRoutes.js";
+import reportRoutes from "./routes/report.routes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -34,7 +35,7 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-  })
+  }),
 );
 app.use(compression());
 app.use(express.json());
@@ -58,6 +59,7 @@ app.use("/api/masterclass", masterclassRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/live-test", liveTestRoutes);
 app.use("/api/course-reviews", courseReviewRoutes);
+app.use("/api/report", reportRoutes);
 
 // 🧱 Error Handler
 // app.use(errorHandler);
