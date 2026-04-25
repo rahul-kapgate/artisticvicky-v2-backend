@@ -26,7 +26,7 @@ export async function sendInvoiceEmail({
   const displayName = toName || "Student";
 
   const { data, error } = await resend.emails.send({
-    from: "Artistic Vickey Billing <billing@artisticvickey.in>",
+    from: "AV Art Academy Billing <billing@artisticvickey.in>",
     to: [toEmail],
     subject: `Invoice #${invoiceNumber} – ${courseName}`,
     html: `
@@ -35,7 +35,7 @@ export async function sendInvoiceEmail({
           <!-- Header -->
           <div style="margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
             <div style="font-size: 18px; font-weight: 700; color: #111827;">
-              Artistic Vickey
+              AV Art Academy
             </div>
           </div>
 
@@ -45,7 +45,7 @@ export async function sendInvoiceEmail({
           <!-- Intro -->
           <p style="margin: 0 0 8px;">
             Thank you for enrolling in 
-            <strong>${courseName}</strong> with Artistic Vickey.
+            <strong>${courseName}</strong> with AV Art Academy.
           </p>
 
           <!-- Summary box -->
@@ -87,7 +87,7 @@ export async function sendInvoiceEmail({
           <!-- Closing -->
           <p style="margin: 16px 0 4px;">
             Warm regards,<br/>
-            <span style="font-weight: 600;">Artistic Vickey Team</span>
+            <span style="font-weight: 600;">AV Art Academy Team</span>
           </p>
 
           <!-- Footer -->

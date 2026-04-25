@@ -6,9 +6,9 @@ dotenv.config();
 export const sendOtpToEmail = async (email, otp) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "Artistic Vickey <no-reply@artisticvickey.in>",
+      from: "AV Art Academy <no-reply@artisticvickey.in>",
       to: [email],
-      subject: "Verification Code - Artistic Vickey",
+      subject: "Verification Code - AV Art Academy",
       html: `
         <!DOCTYPE html>
         <html lang="en">
@@ -83,7 +83,7 @@ export const sendOtpToEmail = async (email, otp) => {
             <div class="footer">
               —<br/>
               Best regards,<br/>
-              <strong>Artistic Vicky Team</strong><br/>
+              <strong>AV Art Academy Team</strong><br/>
               <a href="https://artisticvickey.in" style="color:#2b4eff;text-decoration:none;">artisticvickey.in</a>
             </div>
           </div>

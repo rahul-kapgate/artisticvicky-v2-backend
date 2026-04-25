@@ -52,7 +52,7 @@ export function generateInvoicePdfBuffer(invoiceData) {
       .fillColor("#FFFFFF")
       .font("Helvetica-Bold")
       .fontSize(22)
-      .text("Artistic Vickey", doc.page.margins.left + 16, headerY + 16);
+      .text("AV Art Academy", doc.page.margins.left + 16, headerY + 16);
 
     // URL
     doc
@@ -369,7 +369,7 @@ export function generateInvoicePdfBuffer(invoiceData) {
       .fontSize(8.5)
       .fillColor(COLORS.muted)
       .text(
-        "This is a system generated invoice from Artistic Vickey. For any billing queries, contact vikkitembhurne358@gmail.com.",
+        "This is a system generated invoice from AV Art Academy. For any billing queries, contact vikkitembhurne358@gmail.com.",
         doc.page.margins.left + 20,
         footerY + 8,
         {

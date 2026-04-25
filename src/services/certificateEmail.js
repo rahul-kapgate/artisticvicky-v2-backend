@@ -16,7 +16,7 @@ export async function sendCertificateEmail({
   const { data, error } = await resend.emails.send({
     from:
       process.env.RESEND_FROM_EMAIL ||
-      "Artistic Vicky <certificate@artisticvickey.in>",
+      "AV Art Academy <certificate@artisticvickey.in>",
     to: [toEmail],
     subject: `Certificate for ${courseName}`,
     html: `
@@ -32,7 +32,7 @@ export async function sendCertificateEmail({
           <tr>
             <td style="background:#7f1d1d; padding:18px 24px; text-align:center;">
               <div style="color:#ffffff; font-size:24px; font-weight:700;">
-                Artistic Vicky
+                AV Art Academy
               </div>
               <div style="color:#f1df9b; font-size:12px; margin-top:4px;">
                 Certificate of Completion
@@ -71,7 +71,7 @@ export async function sendCertificateEmail({
 
               <p style="margin:0; font-size:14px; line-height:1.7;">
                 Regards,<br />
-                <strong>Artistic Vicky Team</strong>
+                <strong>AV Art Academy Team</strong>
               </p>
             </td>
           </tr>
