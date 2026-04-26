@@ -43,7 +43,7 @@ export const addVideo = async (req, res) => {
     // 🧠 Check section existence
     const { data: section, error: fetchError } = await supabase
       .from("sections")
-      .select("id, title")
+      .select("id, title, course_id") // ✅ also fetch course_id for context
       .eq("id", section_id)
       .single();
 
@@ -80,21 +80,19 @@ export const addVideo = async (req, res) => {
     });
   } catch (err) {
     console.error("Error adding video:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "An unexpected error occurred while adding video.",
-      });
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while adding video.",
+    });
   }
 };
 
 /**
- * 📋 Get All Videos (or by Section)
+ * 📋 Get All Videos — filterable by section_id or course_id
  */
 export const getVideos = async (req, res) => {
   try {
-    const { section_id } = req.query;
+    const { section_id, course_id } = req.query; // ✅ added course_id filter
 
     let query = supabase
       .from("video_lectures")
@@ -103,24 +101,51 @@ export const getVideos = async (req, res) => {
       )
       .order("created_at", { ascending: true });
 
-    if (section_id) query = query.eq("section_id", section_id);
+    if (section_id) {
+      // Filter directly by section
+      query = query.eq("section_id", section_id);
+    } else if (course_id) {
+      // ✅ Filter by course — get all section IDs for this course first,
+      //    then fetch videos belonging to those sections
+      const { data: sections, error: sectionError } = await supabase
+        .from("sections")
+        .select("id")
+        .eq("course_id", Number(course_id));
+
+      if (sectionError) throw sectionError;
+
+      if (!sections || sections.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "No videos found for this course.",
+          data: [],
+        });
+      }
+
+      const sectionIds = sections.map((s) => s.id);
+      query = query.in("section_id", sectionIds);
+    }
 
     const { data, error } = await query;
     if (error) throw error;
 
     res.status(200).json({
       success: true,
-      message: `Fetched ${data.length} video(s)${section_id ? ` from section ${section_id}` : ""} successfully.`,
+      message: `Fetched ${data.length} video(s)${
+        section_id
+          ? ` from section ${section_id}`
+          : course_id
+            ? ` from course ${course_id}`
+            : ""
+      } successfully.`,
       data,
     });
   } catch (err) {
     console.error("Error fetching videos:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "An unexpected error occurred while fetching videos.",
-      });
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while fetching videos.",
+    });
   }
 };
 
@@ -156,12 +181,10 @@ export const getVideoById = async (req, res) => {
     });
   } catch (err) {
     console.error("Error fetching video:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "An unexpected error occurred while fetching video.",
-      });
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while fetching video.",
+    });
   }
 };
 
@@ -181,21 +204,17 @@ export const updateVideo = async (req, res) => {
     } = req.body;
 
     if (!id || isNaN(Number(id))) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "A valid video ID is required for update.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "A valid video ID is required for update.",
+      });
     }
 
     if (title && title.trim().length < 3) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Video title must be at least 3 characters long.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Video title must be at least 3 characters long.",
+      });
     }
 
     // Check existence
@@ -207,12 +226,12 @@ export const updateVideo = async (req, res) => {
 
     if (fetchError && fetchError.code !== "PGRST116") throw fetchError;
     if (!existing) {
-      return res
-        .status(404)
-        .json({ success: false, message: `Video with ID ${id} not found.` });
+      return res.status(404).json({
+        success: false,
+        message: `Video with ID ${id} not found.`,
+      });
     }
 
-    // Update
     const { data, error } = await supabase
       .from("video_lectures")
       .update({
@@ -236,12 +255,10 @@ export const updateVideo = async (req, res) => {
     });
   } catch (err) {
     console.error("Error updating video:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "An unexpected error occurred while updating video.",
-      });
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while updating video.",
+    });
   }
 };
 
@@ -252,12 +269,10 @@ export const deleteVideo = async (req, res) => {
   try {
     const { id } = req.params;
     if (!id || isNaN(Number(id))) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "A valid video ID is required for deletion.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "A valid video ID is required for deletion.",
+      });
     }
 
     // Check existence
@@ -269,12 +284,12 @@ export const deleteVideo = async (req, res) => {
 
     if (fetchError && fetchError.code !== "PGRST116") throw fetchError;
     if (!existing) {
-      return res
-        .status(404)
-        .json({ success: false, message: `Video with ID ${id} not found.` });
+      return res.status(404).json({
+        success: false,
+        message: `Video with ID ${id} not found.`,
+      });
     }
 
-    // Delete
     const { error } = await supabase
       .from("video_lectures")
       .delete()
@@ -287,11 +302,9 @@ export const deleteVideo = async (req, res) => {
     });
   } catch (err) {
     console.error("Error deleting video:", err);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "An unexpected error occurred while deleting video.",
-      });
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred while deleting video.",
+    });
   }
 };
