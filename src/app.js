@@ -25,6 +25,7 @@ import certificateRoutes from "./routes/certificateRoutes.js";
 import liveTestRoutes from "./routes/liveTestRoutes.js";
 import courseReviewRoutes from "./routes/courseReviewRoutes.js";
 import reportRoutes from "./routes/report.routes.js";
+import faqRoutes from "./routes/faq.routes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -60,6 +61,7 @@ app.use("/api/certificate", certificateRoutes);
 app.use("/api/live-test", liveTestRoutes);
 app.use("/api/course-reviews", courseReviewRoutes);
 app.use("/api/report", reportRoutes);
+app.use("/api/faqs", faqRoutes);
 
 // 🧱 Error Handler
 // app.use(errorHandler);
