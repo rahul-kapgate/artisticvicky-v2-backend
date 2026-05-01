@@ -15,7 +15,8 @@ const upload = multer({ dest: "uploads/" });
  * ---------------------------------------------------------------- */
 export const createResource = async (req, res) => {
   try {
-    const { title, description, type } = req.body;
+    const { title, description, type, course_id } = req.body; // ✅ added course_id
+
     const file = req.file;
 
     // ✅ Validate input
@@ -30,6 +31,14 @@ export const createResource = async (req, res) => {
         .json({ success: false, message: "File is required" });
     }
 
+    // ✅ Validate course_id if provided (must be a positive integer)
+    const parsedCourseId = course_id ? parseInt(course_id, 10) : 1;
+    if (isNaN(parsedCourseId) || parsedCourseId < 1) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid course_id" });
+    }
+
     const key = `resources/${Date.now()}_${file.originalname}`;
 
     try {
@@ -39,7 +48,7 @@ export const createResource = async (req, res) => {
           Key: key,
           Body: fs.createReadStream(file.path),
           ContentType: file.mimetype,
-        })
+        }),
       );
     } finally {
       // ensure temp file is removed even if upload fails
@@ -58,6 +67,7 @@ export const createResource = async (req, res) => {
           title,
           description,
           type,
+          course_id: parsedCourseId, // ✅ added
           file_url: fileUrl,
           file_name: file.originalname,
           mime_type: file.mimetype,
@@ -77,7 +87,10 @@ export const createResource = async (req, res) => {
     console.error("❌ Error creating resource:", err);
     res
       .status(500)
-      .json({ success: false, message: "Server error while uploading resource" });
+      .json({
+        success: false,
+        message: "Server error while uploading resource",
+      });
   }
 };
 
@@ -86,13 +99,22 @@ export const createResource = async (req, res) => {
  * ---------------------------------------------------------------- */
 export const getAllResources = async (req, res) => {
   try {
-    const { type } = req.query;
+    const { type, course_id } = req.query; // ✅ added course_id filter
+
     let query = supabase
       .from("resources")
       .select("*")
       .order("created_at", { ascending: false });
 
     if (type) query = query.eq("type", type);
+
+    // ✅ Filter by course_id if provided
+    if (course_id) {
+      const parsedCourseId = parseInt(course_id, 10);
+      if (!isNaN(parsedCourseId)) {
+        query = query.eq("course_id", parsedCourseId);
+      }
+    }
 
     const { data, error } = await query;
     if (error) throw error;
@@ -115,7 +137,7 @@ export const getAllResources = async (req, res) => {
 export const updateResource = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, type } = req.body;
+    const { title, description, type, course_id } = req.body; // ✅ added course_id
     const file = req.file;
 
     const { data: existing, error: fetchError } = await supabase
@@ -130,6 +152,18 @@ export const updateResource = async (req, res) => {
         .json({ success: false, message: "Resource not found" });
     }
 
+    // ✅ Resolve course_id — keep existing if not provided
+    let resolvedCourseId = existing.course_id;
+    if (course_id !== undefined) {
+      const parsed = parseInt(course_id, 10);
+      if (isNaN(parsed) || parsed < 1) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid course_id" });
+      }
+      resolvedCourseId = parsed;
+    }
+
     let fileUrl = existing.file_url;
 
     // 🧹 Upload new file if provided
@@ -142,7 +176,7 @@ export const updateResource = async (req, res) => {
             new DeleteObjectCommand({
               Bucket: B2_BUCKET,
               Key: oldKey,
-            })
+            }),
           );
         }
       }
@@ -156,7 +190,7 @@ export const updateResource = async (req, res) => {
             Key: key,
             Body: fs.createReadStream(file.path),
             ContentType: file.mimetype,
-          })
+          }),
         );
       } finally {
         if (fs.existsSync(file.path)) {
@@ -173,6 +207,7 @@ export const updateResource = async (req, res) => {
         title,
         description,
         type,
+        course_id: resolvedCourseId, // ✅ added
         file_url: fileUrl,
         file_name: file?.originalname || existing.file_name,
         mime_type: file?.mimetype || existing.mime_type,
@@ -192,7 +227,10 @@ export const updateResource = async (req, res) => {
     console.error("❌ Update resource error:", err);
     res
       .status(500)
-      .json({ success: false, message: "Server error while updating resource" });
+      .json({
+        success: false,
+        message: "Server error while updating resource",
+      });
   }
 };
 
@@ -223,7 +261,7 @@ export const deleteResource = async (req, res) => {
           new DeleteObjectCommand({
             Bucket: B2_BUCKET,
             Key: key,
-          })
+          }),
         );
       }
     }
@@ -239,7 +277,10 @@ export const deleteResource = async (req, res) => {
     console.error("❌ Delete resource error:", err);
     res
       .status(500)
-      .json({ success: false, message: "Server error while deleting resource" });
+      .json({
+        success: false,
+        message: "Server error while deleting resource",
+      });
   }
 };
 
@@ -294,7 +335,7 @@ export const streamResourceFile = async (req, res) => {
     res.setHeader("Content-Type", contentType);
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="${encodeURIComponent(filename)}"`
+      `inline; filename="${encodeURIComponent(filename)}"`,
     );
 
     // `Body` is a stream in Node; pipe it to response

@@ -8,15 +8,15 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import authRoutes from "./routes/authRoutes.js";
-import courseRoutes from './routes/courseRoutes.js'
+import courseRoutes from "./routes/courseRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import mockRoutes from "./routes/mockRoutes.js"
-import userRoutes from "./routes/userRoutes.js"
-import pyqRoutes from "./routes/pyqRoutes.js"
-import resourceRoutes from "./routes/resourceRoutes.js"
-import sectionRoutes from "./routes/sectionRoutes.js"
+import mockRoutes from "./routes/mockRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import pyqRoutes from "./routes/pyqRoutes.js";
+import resourceRoutes from "./routes/resourceRoutes.js";
+import sectionRoutes from "./routes/sectionRoutes.js";
 import videoRoutes from "./routes/videoRoutes.js";
-import studentArtWorkRoutes from "./routes/studentArtWorkRoutes.js"
+import studentArtWorkRoutes from "./routes/studentArtWorkRoutes.js";
 import adminBillingRouter from "./routes/adminBillingRoutes.js";
 import coursePaymentRoutes from "./routes/coursePaymentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
@@ -24,30 +24,33 @@ import masterclassRoutes from "./routes/masterclassRoutes.js";
 import certificateRoutes from "./routes/certificateRoutes.js";
 import liveTestRoutes from "./routes/liveTestRoutes.js";
 import courseReviewRoutes from "./routes/courseReviewRoutes.js";
+import reportRoutes from "./routes/report.routes.js";
+import faqRoutes from "./routes/faq.routes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
 
 // 🔒 Security & Performance Middlewares
 app.use(helmet());
-app.use(cors({ 
-    origin: true,  
-    credentials: true 
-  }));
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
-
 
 // 🔗 Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/course", courseRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/mock-test", mockRoutes)
-app.use("/api/user", userRoutes)
-app.use("/api/pyq-mock-test", pyqRoutes)
-app.use("/api/resource", resourceRoutes)
-app.use("/api/section", sectionRoutes)
+app.use("/api/mock-test", mockRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/pyq-mock-test", pyqRoutes);
+app.use("/api/resource", resourceRoutes);
+app.use("/api/section", sectionRoutes);
 app.use("/api/video", videoRoutes);
 app.use("/api/student-artwork", studentArtWorkRoutes);
 app.use("/api/invoice", adminBillingRouter);
@@ -57,6 +60,9 @@ app.use("/api/masterclass", masterclassRoutes);
 app.use("/api/certificate", certificateRoutes);
 app.use("/api/live-test", liveTestRoutes);
 app.use("/api/course-reviews", courseReviewRoutes);
+app.use("/api/report", reportRoutes);
+app.use("/api/faqs", faqRoutes);
+
 // 🧱 Error Handler
 // app.use(errorHandler);
 

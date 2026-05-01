@@ -74,6 +74,7 @@ const login = async (req, res, next) => {
         email: user.email,
         mobile: user.mobile,
         is_admin: user.is_admin,
+        avatar_id: user.avatar_id,
       },
       accessToken,
       refreshToken,

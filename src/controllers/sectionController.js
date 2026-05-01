@@ -5,7 +5,7 @@ import { supabase } from "../config/supabaseClient.js";
  */
 export const createSection = async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, course_id } = req.body;
 
     if (!title || title.trim().length < 3) {
       return res.status(400).json({
@@ -14,9 +14,24 @@ export const createSection = async (req, res) => {
       });
     }
 
+    // ✅ Validate course_id
+    const parsedCourseId = course_id ? parseInt(course_id, 10) : 1;
+    if (isNaN(parsedCourseId) || parsedCourseId < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid course_id is required.",
+      });
+    }
+
     const { data, error } = await supabase
       .from("sections")
-      .insert([{ title: title.trim(), description: description?.trim() || null }])
+      .insert([
+        {
+          title: title.trim(),
+          description: description?.trim() || null,
+          course_id: parsedCourseId, 
+        },
+      ])
       .select()
       .single();
 
@@ -37,16 +52,28 @@ export const createSection = async (req, res) => {
 };
 
 /**
- * 📋 Get All Sections (with associated videos)
+ * 📋 Get All Sections with Videos — filtered by course_id
  */
 export const getSectionsWithVideos = async (req, res) => {
   try {
+    const { course_id } = req.query; // ✅ added course_id filter
+
+    // ✅ course_id is required — sections are always scoped to a course
+    if (!course_id || isNaN(Number(course_id))) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid course_id query param is required.",
+      });
+    }
+
     const { data: sections, error } = await supabase
       .from("sections")
-      .select(`
+      .select(
+        `
         id,
         title,
         description,
+        course_id,
         created_at,
         video_lectures (
           id,
@@ -57,7 +84,9 @@ export const getSectionsWithVideos = async (req, res) => {
           is_free,
           created_at
         )
-      `)
+      `,
+      )
+      .eq("course_id", Number(course_id)) // ✅ filter by course
       .order("created_at", { ascending: true });
 
     if (error) throw error;
@@ -65,7 +94,7 @@ export const getSectionsWithVideos = async (req, res) => {
     if (!sections || sections.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No sections found. Try adding one.",
+        message: "No sections found for this course. Try adding one.",
         data: [],
       });
     }
@@ -85,12 +114,12 @@ export const getSectionsWithVideos = async (req, res) => {
 };
 
 /**
- * ✏️ Update Section (Edit)
+ * ✏️ Update Section
  */
 export const updateSection = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description } = req.body;
+    const { title, description, course_id } = req.body; // ✅ added course_id
 
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({
@@ -109,7 +138,7 @@ export const updateSection = async (req, res) => {
     // Check if section exists
     const { data: existing, error: fetchError } = await supabase
       .from("sections")
-      .select("id, title")
+      .select("id, title, course_id")
       .eq("id", id)
       .single();
 
@@ -121,12 +150,25 @@ export const updateSection = async (req, res) => {
       });
     }
 
-    // Update
+    // ✅ Resolve course_id — keep existing if not provided
+    let resolvedCourseId = existing.course_id;
+    if (course_id !== undefined) {
+      const parsed = parseInt(course_id, 10);
+      if (isNaN(parsed) || parsed < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid course_id provided.",
+        });
+      }
+      resolvedCourseId = parsed;
+    }
+
     const { data, error } = await supabase
       .from("sections")
       .update({
         title: title.trim(),
         description: description?.trim() || null,
+        course_id: resolvedCourseId, // ✅ added
       })
       .eq("id", id)
       .select()
@@ -149,7 +191,7 @@ export const updateSection = async (req, res) => {
 };
 
 /**
- * 🗑️ Delete Section (Cascade delete videos)
+ * 🗑️ Delete Section (Cascade deletes videos via DB constraint)
  */
 export const deleteSection = async (req, res) => {
   try {
@@ -177,7 +219,6 @@ export const deleteSection = async (req, res) => {
       });
     }
 
-    // Delete
     const { error } = await supabase.from("sections").delete().eq("id", id);
     if (error) throw error;
 

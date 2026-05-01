@@ -1,17 +1,23 @@
+// src/services/coursePaymentService.js
 import crypto from "crypto";
 import { supabase } from "../config/supabaseClient.js";
 import { razorpay } from "../config/razorpayClient.js";
+import { issueInvoiceAndEnroll } from "./invoiceService.js";
 
 /**
- * 1) Create Razorpay order for a course
- * 2) Create payments row in Supabase
+ * 1) Validate course + user
+ * 2) Insert payments row (status=created)
+ * 3) Create Razorpay order
+ * 4) Link razorpay_order_id to the row
+ *
+ * If Razorpay fails, the payment row is marked "failed" so we never leave orphans.
  */
 export const createCourseOrderService = async ({ userId, courseId }) => {
   if (!userId || !courseId) {
     throw new Error("userId and courseId are required");
   }
 
-  // ✅ Get course with price & existing students
+  // Fetch course
   const { data: course, error: courseError } = await supabase
     .from("courses")
     .select("id, course_name, price, students_enrolled")
@@ -23,7 +29,7 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
     throw new Error("Course not found");
   }
 
-  // ✅ Optional: prevent duplicate enrollment
+  // Prevent duplicate enrollment
   const alreadyEnrolled =
     Array.isArray(course.students_enrolled) &&
     course.students_enrolled.includes(userId);
@@ -39,7 +45,7 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
   const amountInPaise = Math.round(Number(course.price) * 100);
   const currency = "INR";
 
-  // ✅ 1. Create payment row
+  // 1. Create payment row
   const { data: paymentRow, error: paymentError } = await supabase
     .from("payments")
     .insert({
@@ -58,21 +64,29 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
     throw new Error("Error creating payment record");
   }
 
-  // ✅ 2. Create Razorpay order
-  const options = {
-    amount: amountInPaise,
-    currency,
-    receipt: paymentRow.id, // internal payment id
-    notes: {
-      payment_id: paymentRow.id,
-      user_id: userId,
-      course_id: courseId,
-    },
-  };
+  // 2. Create Razorpay order — guarded so a failure doesn't leave orphan rows
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount: amountInPaise,
+      currency,
+      receipt: String(paymentRow.id),
+      notes: {
+        payment_id: paymentRow.id,
+        user_id: userId,
+        course_id: courseId,
+      },
+    });
+  } catch (err) {
+    console.error("Razorpay order create failed:", err);
+    await supabase
+      .from("payments")
+      .update({ status: "failed" })
+      .eq("id", paymentRow.id);
+    throw new Error("Failed to create Razorpay order");
+  }
 
-  const order = await razorpay.orders.create(options);
-
-  // ✅ 3. Save razorpay_order_id
+  // 3. Link the Razorpay order id back to our row
   const { error: updateError } = await supabase
     .from("payments")
     .update({ razorpay_order_id: order.id })
@@ -94,7 +108,10 @@ export const createCourseOrderService = async ({ userId, courseId }) => {
 };
 
 /**
- * Verify payment signature, update payment status, and auto-enroll user.
+ * Verify the Razorpay signature, mark the payment as paid, then delegate
+ * enrollment + invoice to the shared invoiceService.
+ *
+ * Signature is verified BEFORE any DB read so invalid payloads never hit the DB.
  */
 export const verifyCoursePaymentService = async ({
   razorpay_order_id,
@@ -105,19 +122,21 @@ export const verifyCoursePaymentService = async ({
     throw new Error("Invalid payment data");
   }
 
+  // Verify signature FIRST
   const body = `${razorpay_order_id}|${razorpay_payment_id}`;
-
   const expectedSignature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(body.toString())
+    .update(body)
     .digest("hex");
 
-  const isValid = expectedSignature === razorpay_signature;
+  if (expectedSignature !== razorpay_signature) {
+    return { success: false, message: "Invalid signature" };
+  }
 
-  // ✅ Fetch payment row to know user + course
+  // Fetch payment row
   const { data: paymentRow, error: paymentFetchError } = await supabase
     .from("payments")
-    .select("id, user_id, course_id, status")
+    .select("id, user_id, course_id, status, amount")
     .eq("razorpay_order_id", razorpay_order_id)
     .single();
 
@@ -126,26 +145,17 @@ export const verifyCoursePaymentService = async ({
     throw new Error("Payment not found");
   }
 
-  if (!isValid) {
-    // mark as failed
-    await supabase
-      .from("payments")
-      .update({
-        status: "failed",
-        razorpay_payment_id,
-        razorpay_signature,
-      })
-      .eq("id", paymentRow.id);
-
-    return { success: false, message: "Invalid signature" };
-  }
-
-  // Idempotent: if already paid, don’t re-enroll
+  // Idempotency — already processed
   if (paymentRow.status === "paid") {
-    return { success: true, message: "Already processed" };
+    return {
+      success: true,
+      message: "Already processed",
+      userId: paymentRow.user_id,
+      enrolledCourseId: paymentRow.course_id,
+    };
   }
 
-  // ✅ Mark payment as paid
+  // Mark payment as paid
   const { error: updateError } = await supabase
     .from("payments")
     .update({
@@ -160,31 +170,14 @@ export const verifyCoursePaymentService = async ({
     throw new Error("Error updating payment as paid");
   }
 
-  // ✅ Auto-enroll user in that course (same logic as your enrollUserInCourse)
-  const { data: course, error: courseError } = await supabase
-    .from("courses")
-    .select("students_enrolled")
-    .eq("id", paymentRow.course_id)
-    .single();
+  // Enroll + invoice via shared service
+  const result = await issueInvoiceAndEnroll({
+    userId: paymentRow.user_id,
+    courseId: paymentRow.course_id,
+    amount: paymentRow.amount / 100, // paise → rupees
+    source: "payment",
+    paymentId: paymentRow.id,
+  });
 
-  if (courseError) {
-    console.error("Course fetch error (enroll):", courseError);
-    throw new Error("Error fetching course for enrollment");
-  }
-
-  const updatedArray = Array.isArray(course.students_enrolled)
-    ? [...new Set([...course.students_enrolled, paymentRow.user_id])]
-    : [paymentRow.user_id];
-
-  const { error: enrollUpdateError } = await supabase
-    .from("courses")
-    .update({ students_enrolled: updatedArray })
-    .eq("id", paymentRow.course_id);
-
-  if (enrollUpdateError) {
-    console.error("Course enrollment update error:", enrollUpdateError);
-    throw new Error("Error enrolling user in course");
-  }
-
-  return { success: true, courseId: paymentRow.course_id, userId: paymentRow.user_id };
+  return { success: true, ...result };
 };
