@@ -36,7 +36,7 @@ router.post("/:course_id/add-question", verifyToken, isAdmin, upload.single("ima
 
 router.get("/:course_id/search-question", verifyToken,isAdmin, searchMockQuestions);
 
-router.get("/:course_id/questions-with-images", getQuestionsWithImages);
+router.get("/:course_id/questions-with-images", verifyToken, isAdmin,getQuestionsWithImages);
 
 router.put("/questions/:question_id/image", verifyToken, isAdmin, upload.single("image"), updateMockQuestionImage);
 
