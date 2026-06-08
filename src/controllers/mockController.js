@@ -190,7 +190,6 @@ export const submitMockAttempt = async (req, res) => {
 };
 
 
-
 // Get all mock attempts for a specific student
 export const getMockAttemptsByStudent = async (req, res) => {
   try {
@@ -437,7 +436,6 @@ export const createMockQuestion = async (req, res) => {
   }
 };
 
-
 // soft normalize: "Test   Question 1" == "test question 1"
 const normSoft = (s = "") => s.trim().replace(/\s+/g, " ").toLowerCase();
 
@@ -498,6 +496,110 @@ export const searchMockQuestions = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to search questions",
+      error: err.message,
+    });
+  }
+};
+
+// Get all questions that have images
+export const getQuestionsWithImages = async (req, res) => {
+  try {
+    const { course_id } = req.params;
+
+    let allQuestions = [];
+    let from = 0;
+    const limit = 1000;
+
+    while (true) {
+      const { data, error } = await supabase
+        .from("mock_questions")
+        .select("*")
+        .eq("course_id", course_id)
+        .not("image_url", "is", null)
+        .range(from, from + limit - 1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      allQuestions = [...allQuestions, ...data];
+      from += limit;
+    }
+
+    // remove empty image_url
+    const filtered = allQuestions.filter(
+      (q) => q.image_url && q.image_url.trim() !== ""
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: filtered.length,
+      data: filtered,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch questions with images",
+      error: err.message,
+    });
+  }
+};
+
+export const updateMockQuestionImage = async (req, res) => {
+  try {
+    const { question_id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Image is required",
+      });
+    }
+
+    // Find question
+    const { data: question, error } = await supabase
+      .from("mock_questions")
+      .select("*")
+      .eq("id", question_id)
+      .single();
+
+    if (error || !question) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
+
+    // Upload new image
+    const image_url = await uploadMockImage({
+      file: req.file,
+      course_id: question.course_id,
+    });
+
+    // Update DB
+    const { data: updated, error: updateError } = await supabase
+      .from("mock_questions")
+      .update({
+        image_url,
+      })
+      .eq("id", question_id)
+      .select("*")
+      .single();
+
+    if (updateError) throw updateError;
+
+    return res.status(200).json({
+      success: true,
+      message: "Image updated successfully",
+      data: updated,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update image",
       error: err.message,
     });
   }

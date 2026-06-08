@@ -5,7 +5,9 @@ import {
   getMockAttemptsByStudent,
   getMockAttemptDetails,
   createMockQuestion,
-  searchMockQuestions
+  searchMockQuestions,
+  getQuestionsWithImages,
+  updateMockQuestionImage
 } from "../controllers/mockController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import multer from "multer";
@@ -33,5 +35,9 @@ const upload = multer({
 router.post("/:course_id/add-question", verifyToken, isAdmin, upload.single("image"), createMockQuestion);
 
 router.get("/:course_id/search-question", verifyToken,isAdmin, searchMockQuestions);
+
+router.get("/:course_id/questions-with-images", getQuestionsWithImages);
+
+router.put("/questions/:question_id/image", verifyToken, isAdmin, upload.single("image"), updateMockQuestionImage);
 
 export default router;
