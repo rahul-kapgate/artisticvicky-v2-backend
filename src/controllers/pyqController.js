@@ -1,5 +1,6 @@
 import { supabase } from "../config/supabaseClient.js";
 import { s3 } from "../config/s3Client.js";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 // 1️⃣ Get all PYQ papers for a course
 export const getPYQPapers = async (req, res) => {
@@ -247,6 +248,25 @@ export const getPYQQuestionsWithImages = async (req, res) => {
 };
 
 
+const safeName = (name = "image") =>
+  name.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+async function uploadPYQImage({ file, paper_id }) {
+  const bucket = process.env.AWS_S3_BUCKET;
+  const fileKey = `pyq-images/${paper_id}/${Date.now()}_${safeName(file.originalname)}`;
+
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: fileKey,
+    Body: file.buffer,
+    ContentType: file.mimetype,
+  });
+
+  await s3.send(command);
+
+  return `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+}
+
 export const updatePYQQuestionImage = async (req, res) => {
   try {
     const { question_id } = req.params;
@@ -258,34 +278,44 @@ export const updatePYQQuestionImage = async (req, res) => {
       });
     }
 
-    // Upload image to S3
-    const imageUrl = await uploadToS3(
-      req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype,
-      "PYQ-images"
-    );
-
-    const { data, error } = await supabase
+    const { data: question, error } = await supabase
       .from("pyq_questions")
-      .update({
-        image_url: imageUrl,
-      })
+      .select("id, paper_id")
       .eq("id", question_id)
-      .select()
       .single();
 
-    if (error) throw error;
+    if (error || !question) {
+      return res.status(404).json({
+        success: false,
+        message: "Question not found",
+      });
+    }
 
-    res.status(200).json({
+    const image_url = await uploadPYQImage({
+      file: req.file,
+      paper_id: question.paper_id,
+    });
+
+    const { data: updated, error: updateError } = await supabase
+      .from("pyq_questions")
+      .update({
+        image_url,
+      })
+      .eq("id", question_id)
+      .select("*")
+      .single();
+
+    if (updateError) throw updateError;
+
+    return res.status(200).json({
       success: true,
       message: "Image updated successfully",
-      data,
+      data: updated,
     });
   } catch (err) {
     console.error("❌ Error updating PYQ image:", err.message);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to update image",
       error: err.message,
