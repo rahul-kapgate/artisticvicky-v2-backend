@@ -1,4 +1,5 @@
 import { supabase } from "../config/supabaseClient.js";
+import { s3 } from "../config/s3Client.js";
 
 // 1️⃣ Get all PYQ papers for a course
 export const getPYQPapers = async (req, res) => {
@@ -200,6 +201,93 @@ export const getPYQAttemptDetails = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch attempt details",
+      error: err.message,
+    });
+  }
+};
+
+
+// Get all PYQ questions with images
+export const getPYQQuestionsWithImages = async (req, res) => {
+  try {
+    const { paper_id } = req.params;
+
+    const { data, error } = await supabase
+      .from("pyq_questions")
+      .select(`
+        id,
+        question_text,
+        options,
+        correct_option_id,
+        image_url,
+        difficulty,
+        marks
+      `)
+      .eq("paper_id", paper_id)
+      .not("image_url", "is", null)
+      .neq("image_url", "")
+      .order("id", { ascending: true });
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      totalQuestions: data.length,
+      data,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching PYQ questions with images:", err.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch PYQ questions",
+      error: err.message,
+    });
+  }
+};
+
+
+export const updatePYQQuestionImage = async (req, res) => {
+  try {
+    const { question_id } = req.params;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Image is required",
+      });
+    }
+
+    // Upload image to S3
+    const imageUrl = await uploadToS3(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      "PYQ-images"
+    );
+
+    const { data, error } = await supabase
+      .from("pyq_questions")
+      .update({
+        image_url: imageUrl,
+      })
+      .eq("id", question_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      message: "Image updated successfully",
+      data,
+    });
+  } catch (err) {
+    console.error("❌ Error updating PYQ image:", err.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update image",
       error: err.message,
     });
   }
