@@ -6,6 +6,7 @@ import {
   updateResource,
   deleteResource,
   streamResourceFile,
+  downloadResourceFile
 } from "../controllers/resourceController.js";
 import { verifyToken } from "../middlewares/authMiddleware.js";
 import { isAdmin } from "../middlewares/roleMiddleware.js";
@@ -38,5 +39,8 @@ router.get("/all-resources", verifyToken, getAllResources);
 
 // ✅ Authenticated users can stream the actual file
 router.get("/:id/file", verifyToken, streamResourceFile);
+
+// downalod API
+router.get("/:id/download", verifyToken, downloadResourceFile);
 
 export default router;
