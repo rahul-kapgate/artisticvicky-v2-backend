@@ -356,4 +356,121 @@ export const streamResourceFile = async (req, res) => {
   }
 };
 
+/** ----------------------------------------------------------------
+ * ⬇️ Download Resource File (Private B2 bucket → forced download)
+ * ---------------------------------------------------------------- */
+export const downloadResourceFile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Find resource in database
+    const { data: resource, error } = await supabase
+      .from("resources")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !resource) {
+      return res.status(404).json({
+        success: false,
+        message: "Resource not found",
+      });
+    }
+
+    if (!resource.file_url) {
+      return res.status(400).json({
+        success: false,
+        message: "No file linked to this resource",
+      });
+    }
+
+    // 2. Extract B2 object key from stored URL
+    const key = resource.file_url.replace(`${B2_PUBLIC_BASE_URL}/`, "");
+
+    if (!key) {
+      return res.status(500).json({
+        success: false,
+        message: "Invalid file URL configuration",
+      });
+    }
+
+    // 3. Fetch file from Backblaze B2
+    const command = new GetObjectCommand({
+      Bucket: B2_BUCKET,
+      Key: key,
+    });
+
+    const b2Response = await b2Client.send(command);
+
+    if (!b2Response.Body) {
+      return res.status(404).json({
+        success: false,
+        message: "File body not found in storage",
+      });
+    }
+
+    // 4. Resolve response metadata
+    const contentType =
+      b2Response.ContentType ||
+      resource.mime_type ||
+      "application/octet-stream";
+
+    const filename =
+      resource.file_name ||
+      decodeURIComponent(key.split("/").pop() || "resource-file");
+
+    // 5. Force browser download
+    res.setHeader("Content-Type", contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(filename)}"`,
+    );
+
+    if (b2Response.ContentLength) {
+      res.setHeader(
+        "Content-Length",
+        b2Response.ContentLength.toString(),
+      );
+    }
+
+    res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
+    // 6. Pipe B2 stream directly to client
+    b2Response.Body.on("error", (streamError) => {
+      console.error("❌ Download stream error:", streamError);
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: "Error downloading resource file",
+        });
+      } else {
+        res.destroy(streamError);
+      }
+    });
+
+    b2Response.Body.pipe(res);
+  } catch (err) {
+    console.error("❌ Download resource file error:", err);
+
+    if (err?.$metadata?.httpStatusCode === 404) {
+      return res.status(404).json({
+        success: false,
+        message: "File not found in storage",
+      });
+    }
+
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: "Error downloading resource file",
+      });
+    }
+
+    res.end();
+  }
+};
+
 export { upload };
