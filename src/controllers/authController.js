@@ -5,8 +5,40 @@ import { supabase } from "../config/supabaseClient.js";
 import dotenv from "dotenv";
 import { sendOtpToEmail } from "../services/emailService.js";
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
+
+const generateAuthTokens = (user) => {
+  const accessToken = jwt.sign(
+    {
+      id: user.id,
+      is_admin: user.is_admin,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: "3h",
+    },
+  );
+
+  const refreshToken = jwt.sign(
+    {
+      id: user.id,
+      is_admin: user.is_admin,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: "7d",
+    },
+  );
+
+  return {
+    accessToken,
+    refreshToken,
+  };
+};
 
 dotenv.config();
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const login = async (req, res, next) => {
   try {
@@ -37,6 +69,14 @@ const login = async (req, res, next) => {
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({
+        message:
+          "This account uses Google Sign-In. Please continue with Google.",
+        code: "GOOGLE_ACCOUNT",
+      });
     }
 
     // 4️⃣ Compare password
@@ -205,7 +245,9 @@ const signupVerify = async (req, res) => {
 
     if (insertError) {
       if (insertError.code === "23505") {
-        return res.status(409).json({ message: "Email or mobile already registered" });
+        return res
+          .status(409)
+          .json({ message: "Email or mobile already registered" });
       }
       throw insertError;
     }
@@ -256,4 +298,172 @@ const refreshToken = async (req, res) => {
   }
 };
 
-export { login, signupInitiate, signupVerify, refreshToken };
+const googleLogin = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+
+    // 1. Validate request
+    if (!credential) {
+      return res.status(400).json({
+        message: "Google credential is required",
+      });
+    }
+
+    // 2. Verify Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      return res.status(401).json({
+        message: "Invalid Google credential",
+      });
+    }
+
+    const {
+      sub: googleId,
+      email,
+      email_verified: emailVerified,
+      name,
+      picture,
+    } = payload;
+
+    // 3. Validate required Google account information
+    if (!googleId || !email) {
+      return res.status(400).json({
+        message: "Google account information is incomplete",
+      });
+    }
+
+    if (!emailVerified) {
+      return res.status(401).json({
+        message: "Google email is not verified",
+      });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // 4. First search by Google ID
+    const { data: googleUser, error: googleUserError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("google_id", googleId)
+      .maybeSingle();
+
+    if (googleUserError) {
+      throw googleUserError;
+    }
+
+    let user = googleUser;
+
+    // 5. If Google ID is not linked, search by email
+    if (!user) {
+      const { data: existingEmailUser, error: emailUserError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+
+      if (emailUserError) {
+        throw emailUserError;
+      }
+
+      // 6. Link Google with existing local account
+      if (existingEmailUser) {
+        const updatedProvider = existingEmailUser.password
+          ? "local_google"
+          : "google";
+
+        const { data: linkedUser, error: linkError } = await supabase
+          .from("users")
+          .update({
+            google_id: googleId,
+            auth_provider: updatedProvider,
+            email_verified: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingEmailUser.id)
+          .select("*")
+          .single();
+
+        if (linkError) {
+          throw linkError;
+        }
+
+        user = linkedUser;
+      } else {
+        // 7. Create a new Google-only user
+        const { data: newUser, error: createUserError } = await supabase
+          .from("users")
+          .insert([
+            {
+              user_name: name || normalizedEmail.split("@")[0],
+              email: normalizedEmail,
+              mobile: null,
+              password: null,
+              is_admin: false,
+              avatar_id: 1,
+              auth_provider: "google",
+              google_id: googleId,
+              email_verified: true,
+              updated_at: new Date().toISOString(),
+            },
+          ])
+          .select("*")
+          .single();
+
+        if (createUserError) {
+          throw createUserError;
+        }
+
+        user = newUser;
+      }
+    }
+
+    // 8. Generate your application JWT tokens
+    const { accessToken, refreshToken } = generateAuthTokens(user);
+
+    console.log(
+      `${user.user_name || user.email} logged in with Google at ${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ")}`,
+    );
+
+    // 9. Return the same response format as normal login
+    return res.status(200).json({
+      message: "Google login successful",
+      user: {
+        id: user.id,
+        user_name: user.user_name,
+        email: user.email,
+        mobile: user.mobile,
+        is_admin: user.is_admin,
+        avatar_id: user.avatar_id,
+        auth_provider: user.auth_provider,
+        profile_picture: picture || null,
+      },
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+
+    if (
+      error.message?.includes("Wrong recipient") ||
+      error.message?.includes("Invalid token") ||
+      error.message?.includes("Token used too late")
+    ) {
+      return res.status(401).json({
+        message: "Invalid or expired Google credential",
+      });
+    }
+
+    next(error);
+  }
+};
+
+export { login, signupInitiate, signupVerify, refreshToken, googleLogin };
