@@ -16,6 +16,7 @@ dotenv.config();
  */
 export async function sendInvoiceEmail({
   toEmail,
+  ccEmail = process.env.ADMIN_MAIL,
   toName,
   pdfBuffer,
   invoiceNumber,
@@ -28,6 +29,7 @@ export async function sendInvoiceEmail({
   const { data, error } = await resend.emails.send({
     from: "AV Art Academy Billing <billing@artisticvickey.in>",
     to: [toEmail],
+    cc: ccEmail ? [ccEmail] : [],
     subject: `Invoice #${invoiceNumber} – ${courseName}`,
     html: `
       <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #0f172a;">
