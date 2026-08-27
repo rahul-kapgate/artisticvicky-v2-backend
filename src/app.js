@@ -2,11 +2,32 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
+import pinoHttp from "pino-http";
+import logger from "./config/logger.js";
 
 const app = express();
 
 // Security
 app.use(helmet());
+
+// Logging
+app.use(
+  pinoHttp({
+    logger,
+
+    serializers: {
+      req: (req) => ({
+        id: req.id,
+        method: req.method,
+        url: req.url,
+      }),
+
+      res: (res) => ({
+        statusCode: res.statusCode,
+      }),
+    },
+  })
+);
 
 // CORS
 app.use(cors());
