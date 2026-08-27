@@ -5,6 +5,8 @@ import compression from "compression";
 import pinoHttp from "pino-http";
 import logger from "./config/logger.js";
 
+import authRoutes from "./modules/auth/auth.routes.js";
+
 const app = express();
 
 // Security
@@ -26,7 +28,7 @@ app.use(
         statusCode: res.statusCode,
       }),
     },
-  })
+  }),
 );
 
 // CORS
@@ -47,8 +49,8 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API routes will be added here
-// app.use("/api/v1/auth", authRoutes);
+// API routes
+app.use("/api/v1/auth", authRoutes);
 // app.use("/api/v1/users", userRoutes);
 
 // 404 handler

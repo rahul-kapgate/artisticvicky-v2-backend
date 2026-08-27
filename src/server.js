@@ -10,9 +10,7 @@ const startServer = async () => {
 
     // Start Express server
     const server = app.listen(env.port, () => {
-      logger.info(
-        `Server running on http://localhost:${env.port}`
-      );
+      logger.info(`Server running on http://localhost:${env.port}`);
     });
 
     // Graceful shutdown
