@@ -1,6 +1,7 @@
 import app from "./app.js";
 import { env } from "./config/env.js";
 import { connectDatabase, pool } from "./config/database.js";
+import logger from "./config/logger.js";
 
 const startServer = async () => {
   try {
@@ -9,19 +10,19 @@ const startServer = async () => {
 
     // Start Express server
     const server = app.listen(env.port, () => {
-      console.log(
+      logger.info(
         `Server running on http://localhost:${env.port}`
       );
     });
 
     // Graceful shutdown
     const shutdown = async (signal) => {
-      console.log(`${signal} received. Shutting down...`);
+      logger.info(`${signal} received. Shutting down...`);
 
       server.close(async () => {
         await pool.end();
 
-        console.log("Server closed");
+        logger.info("Server closed");
         process.exit(0);
       });
     };
@@ -29,7 +30,7 @@ const startServer = async () => {
     process.on("SIGTERM", () => shutdown("SIGTERM"));
     process.on("SIGINT", () => shutdown("SIGINT"));
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 };

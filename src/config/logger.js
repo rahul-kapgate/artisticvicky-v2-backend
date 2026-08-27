@@ -1,21 +1,19 @@
-const logger = {
-  info: (...args) => {
-    console.log("[INFO]", ...args);
-  },
+import pino from "pino";
+import { env } from "./env.js";
 
-  warn: (...args) => {
-    console.warn("[WARN]", ...args);
-  },
+const logger = pino({
+  level: env.nodeEnv === "production" ? "info" : "debug",
 
-  error: (...args) => {
-    console.error("[ERROR]", ...args);
-  },
-
-  debug: (...args) => {
-    if (process.env.NODE_ENV === "development") {
-      console.debug("[DEBUG]", ...args);
-    }
-  },
-};
+  ...(env.nodeEnv !== "production" && {
+    transport: {
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+      },
+    },
+  }),
+});
 
 export default logger;
