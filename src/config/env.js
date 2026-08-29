@@ -14,6 +14,16 @@ for (const key of requiredEnv) {
   }
 }
 
+const getPositiveInteger = (key, fallback) => {
+  const value = Number(process.env[key] ?? fallback);
+
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${key} must be a positive integer`);
+  }
+
+  return value;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
 
@@ -29,17 +39,23 @@ export const env = {
 
   otpHmacSecret: process.env.OTP_HMAC_SECRET,
 
-  otpExpiryMinutes: getPositiveInteger("OTP_EXPIRY_MINUTES", 5),
+  otpExpiryMinutes: getPositiveInteger(
+    "OTP_EXPIRY_MINUTES",
+    10
+  ),
 
   pendingUserExpiryMinutes: getPositiveInteger(
     "PENDING_USER_EXPIRY_MINUTES",
-    10,
+    30
   ),
 
-  otpMaxAttempts: getPositiveInteger("OTP_MAX_ATTEMPTS", 5),
+  otpMaxAttempts: getPositiveInteger(
+    "OTP_MAX_ATTEMPTS",
+    5
+  ),
 
   otpResendCooldownSeconds: getPositiveInteger(
     "OTP_RESEND_COOLDOWN_SECONDS",
-    60,
+    60
   ),
 };

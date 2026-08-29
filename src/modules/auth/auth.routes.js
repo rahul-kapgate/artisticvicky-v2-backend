@@ -10,7 +10,7 @@ import {
   registerRateLimit,
   verifyOtpRateLimit,
   resendOtpRateLimit,
-} from "../../middleware/authRateLimit.js";
+} from "../../middlewares/authRateLimit.js";
 
 const router = Router();
 
