@@ -1,4 +1,4 @@
-import { pool } from "../../config/database.js";
+import { pool } from "../../../config/database.js";
 
 export const lockEmail = async (client, email) => {
   await client.query(

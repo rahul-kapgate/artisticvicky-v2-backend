@@ -4,13 +4,13 @@ import {
   register,
   verifyRegistrationOtp,
   resendRegistration,
-} from "./auth.controller.js";
+} from "./registration.controller.js";
 
 import {
   registerRateLimit,
   verifyOtpRateLimit,
   resendOtpRateLimit,
-} from "../../middlewares/authRateLimit.js";
+} from "../../../middlewares/authRateLimit.js";
 
 const router = Router();
 

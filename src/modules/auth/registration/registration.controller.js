@@ -2,13 +2,13 @@ import {
   parseRegistrationInput,
   parseVerifyRegistrationInput,
   parseResendRegistrationInput,
-} from "./auth.validation.js";
+} from "./registration.validation.js";
 
 import {
   startRegistration,
   verifyRegistration,
   resendRegistrationOtp,
-} from "./auth.service.js";
+} from "./registration.service.js";
 
 export const register = async (req, res) => {
   const input = parseRegistrationInput(req.body);

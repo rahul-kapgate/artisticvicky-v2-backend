@@ -1,11 +1,11 @@
-import { pool } from "../../config/database.js";
-import { env } from "../../config/env.js";
+import { pool } from "../../../config/database.js";
+import { env } from "../../../config/env.js";
 
-import AppError from "../../utils/AppError.js";
+import AppError from "../../../utils/AppError.js";
 
-import { generateOtp, hashOtp, verifyOtp } from "../../utils/otp.js";
+import { generateOtp, hashOtp, verifyOtp } from "../../../utils/otp.js";
 
-import { hashPassword } from "../../utils/password.js";
+import { hashPassword } from "../../../utils/password.js";
 
 import {
   lockEmail,
@@ -24,9 +24,9 @@ import {
   createUser,
   transferOtpToUser,
   deletePendingUser,
-} from "./auth.repository.js";
+} from "./registration.repository.js";
 
-import { sendRegistrationOtpEmail } from "../../services/email/resend.service.js";
+import { sendRegistrationOtpEmail } from "../../../services/email/resend.service.js";
 
 const PURPOSE = "registration";
 

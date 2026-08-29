@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import AppError from "../../utils/AppError.js";
+import AppError from "../../../utils/AppError.js";
 
 const mobileSchema = z.preprocess(
   (value) => {
