@@ -33,3 +33,49 @@ export const resendOtpRateLimit = rateLimit({
 
   limit: 10,
 });
+
+export const forgotPasswordRequestRateLimit =
+  rateLimit({
+    ...commonOptions,
+
+    windowMs:
+      15 * 60 * 1000,
+
+    limit: 5,
+
+    message: {
+      success: false,
+
+      message:
+        "Too many password reset requests. Please try again later.",
+    },
+  });
+
+
+export const forgotPasswordVerifyRateLimit =
+  rateLimit({
+    ...commonOptions,
+
+    windowMs:
+      15 * 60 * 1000,
+
+    limit: 20,
+
+    message: {
+      success: false,
+
+      message:
+        "Too many verification attempts. Please try again later.",
+    },
+  });
+
+
+export const forgotPasswordResetRateLimit =
+  rateLimit({
+    ...commonOptions,
+
+    windowMs:
+      15 * 60 * 1000,
+
+    limit: 10,
+  });

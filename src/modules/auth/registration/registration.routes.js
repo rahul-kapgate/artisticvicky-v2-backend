@@ -14,10 +14,10 @@ import {
 
 const router = Router();
 
-router.post("/register", registerRateLimit, register);
+router.post("/", registerRateLimit, register);
 
-router.post("/register/verify", verifyOtpRateLimit, verifyRegistrationOtp);
+router.post("/verify", verifyOtpRateLimit, verifyRegistrationOtp);
 
-router.post("/register/resend", resendOtpRateLimit, resendRegistration);
+router.post("/resend", resendOtpRateLimit, resendRegistration);
 
 export default router;

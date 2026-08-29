@@ -39,23 +39,23 @@ export const env = {
 
   otpHmacSecret: process.env.OTP_HMAC_SECRET,
 
-  otpExpiryMinutes: getPositiveInteger(
-    "OTP_EXPIRY_MINUTES",
-    10
-  ),
+  otpExpiryMinutes: getPositiveInteger("OTP_EXPIRY_MINUTES", 10),
 
   pendingUserExpiryMinutes: getPositiveInteger(
     "PENDING_USER_EXPIRY_MINUTES",
-    30
+    30,
   ),
 
-  otpMaxAttempts: getPositiveInteger(
-    "OTP_MAX_ATTEMPTS",
-    5
-  ),
+  otpMaxAttempts: getPositiveInteger("OTP_MAX_ATTEMPTS", 5),
 
   otpResendCooldownSeconds: getPositiveInteger(
     "OTP_RESEND_COOLDOWN_SECONDS",
-    60
+    60,
   ),
+
+  passwordResetTokenExpiryMinutes: Number(
+    process.env.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES || 15,
+  ),
+
+  passwordResetMaxPerHour: Number(process.env.PASSWORD_RESET_MAX_PER_HOUR || 5),
 };

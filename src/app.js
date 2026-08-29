@@ -5,7 +5,7 @@ import compression from "compression";
 import pinoHttp from "pino-http";
 import logger from "./config/logger.js";
 
-import authRoutes from "./modules/auth/registration/registration.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
