@@ -4,11 +4,21 @@ import helmet from "helmet";
 import compression from "compression";
 import pinoHttp from "pino-http";
 import logger from "./config/logger.js";
+import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
+app.use(cookieParser());
+app.use(
+  cors({
+    origin:
+      process.env.FRONTEND_URL,
 
+    credentials:
+      true,
+  })
+);
 // Security
 app.use(helmet());
 

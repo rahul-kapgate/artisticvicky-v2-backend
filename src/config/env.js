@@ -58,4 +58,14 @@ export const env = {
   ),
 
   passwordResetMaxPerHour: Number(process.env.PASSWORD_RESET_MAX_PER_HOUR || 5),
+
+  accessTokenExpiryMinutes: Number(
+    process.env.ACCESS_TOKEN_EXPIRY_MINUTES || 15,
+  ),
+
+  sessionExpiryDays: Number(process.env.SESSION_EXPIRY_DAYS || 30),
+
+  refreshCookieName: process.env.REFRESH_COOKIE_NAME || "av_refresh_token",
+
+  refreshCookieSameSite: process.env.REFRESH_COOKIE_SAME_SITE || "lax",
 };
