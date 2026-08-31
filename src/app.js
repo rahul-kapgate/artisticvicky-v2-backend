@@ -7,17 +7,16 @@ import logger from "./config/logger.js";
 import cookieParser from "cookie-parser";
 
 import authRoutes from "./routes/auth.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin:
-      process.env.FRONTEND_URL,
+    origin: process.env.FRONTEND_URL,
 
-    credentials:
-      true,
-  })
+    credentials: true,
+  }),
 );
 // Security
 app.use(helmet());
@@ -61,7 +60,7 @@ app.get("/health", (req, res) => {
 
 // API routes
 app.use("/api/v1/auth", authRoutes);
-// app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 // 404 handler
 app.use((req, res) => {
