@@ -6,6 +6,7 @@ import { requireRole } from "../../../middlewares/requireRole.js";
 
 import {
   createCourse,
+  updateCourse,
   updateCourseDetails,
 } from "./course-admin.controller.js";
 
@@ -16,6 +17,8 @@ router.use(authenticate);
 router.use(requireRole("admin"));
 
 router.post("/", createCourse);
+
+router.patch("/:id", updateCourse);
 
 router.patch("/:id/details", updateCourseDetails);
 

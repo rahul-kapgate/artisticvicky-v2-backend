@@ -188,6 +188,63 @@ const updateCourseDetailsSchema = z
     message: "At least one field must be provided",
   });
 
+const updateCourseSchema = z
+  .object({
+    title: z.string().trim().min(3).max(180).optional(),
+
+    shortDescription: z.string().trim().max(500).nullable().optional(),
+
+    thumbnailUrl: z.string().url("Invalid thumbnail URL").nullable().optional(),
+
+    visibility: z.enum(["public", "unlisted"]).optional(),
+
+    isFree: z.boolean().optional(),
+
+    priceAmount: z.number().int().min(0).optional(),
+
+    salePriceAmount: z.number().int().positive().nullable().optional(),
+
+    currency: z
+      .string()
+      .trim()
+      .length(3)
+      .transform((value) => value.toUpperCase())
+      .optional(),
+
+    accessType: z.enum(["lifetime", "duration", "fixed_date"]).optional(),
+
+    accessDurationDays: z.number().int().positive().nullable().optional(),
+
+    accessEndAt: z
+      .string()
+      .datetime({
+        offset: true,
+      })
+      .nullable()
+      .optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one field must be provided",
+  });
+
+export const parseUpdateCourseInput = (input) => {
+  const result = updateCourseSchema.safeParse(input);
+
+  if (!result.success) {
+    throw new AppError("Validation failed", 400, {
+      code: "VALIDATION_ERROR",
+
+      details: result.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+
+        message: issue.message,
+      })),
+    });
+  }
+
+  return result.data;
+};
+
 const courseIdSchema = z.string().uuid("Invalid course ID");
 
 export const parseCreateCourseInput = (input) => {
@@ -236,4 +293,112 @@ export const parseUpdateCourseDetailsInput = (input) => {
   }
 
   return result.data;
+};
+
+export const validateResolvedCourseInput = (data) => {
+  const errors = [];
+
+  /*
+   * PRICE VALIDATION
+   */
+  if (data.isFree) {
+    if (data.priceAmount !== 0) {
+      errors.push({
+        field: "priceAmount",
+        message: "Free course price must be 0",
+      });
+    }
+
+    if (data.salePriceAmount != null) {
+      errors.push({
+        field: "salePriceAmount",
+        message: "Free course cannot have a sale price",
+      });
+    }
+  } else {
+    if (!Number.isInteger(data.priceAmount) || data.priceAmount <= 0) {
+      errors.push({
+        field: "priceAmount",
+        message: "Paid course price must be greater than 0",
+      });
+    }
+
+    if (
+      data.salePriceAmount != null &&
+      (data.salePriceAmount <= 0 || data.salePriceAmount >= data.priceAmount)
+    ) {
+      errors.push({
+        field: "salePriceAmount",
+        message:
+          "Sale price must be greater than 0 and less than regular price",
+      });
+    }
+  }
+
+  /*
+   * ACCESS VALIDATION
+   */
+  if (data.accessType === "lifetime") {
+    if (data.accessDurationDays != null || data.accessEndAt != null) {
+      errors.push({
+        field: "accessType",
+        message: "Lifetime access cannot have duration days or an end date",
+      });
+    }
+  }
+
+  if (data.accessType === "duration") {
+    if (
+      !Number.isInteger(data.accessDurationDays) ||
+      data.accessDurationDays <= 0
+    ) {
+      errors.push({
+        field: "accessDurationDays",
+
+        message: "Duration access requires valid access duration days",
+      });
+    }
+
+    if (data.accessEndAt != null) {
+      errors.push({
+        field: "accessEndAt",
+
+        message: "Duration access cannot have a fixed end date",
+      });
+    }
+  }
+
+  if (data.accessType === "fixed_date") {
+    if (data.accessDurationDays != null) {
+      errors.push({
+        field: "accessDurationDays",
+
+        message: "Fixed-date access cannot have duration days",
+      });
+    }
+
+    if (!data.accessEndAt) {
+      errors.push({
+        field: "accessEndAt",
+
+        message: "Fixed-date access requires an end date",
+      });
+    } else if (new Date(data.accessEndAt).getTime() <= Date.now()) {
+      errors.push({
+        field: "accessEndAt",
+
+        message: "Access end date must be in the future",
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new AppError("Validation failed", 400, {
+      code: "VALIDATION_ERROR",
+
+      details: errors,
+    });
+  }
+
+  return data;
 };

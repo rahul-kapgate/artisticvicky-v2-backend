@@ -307,3 +307,140 @@ export const updateCourseDetails = async (courseId, input, client) => {
 
   return result.rows[0] ?? null;
 };
+
+export const getCourseForUpdate = async (courseId, client) => {
+  const result = await client.query(
+    `
+          SELECT
+            id,
+            title,
+            slug,
+
+            short_description,
+            thumbnail_url,
+
+            status,
+            visibility,
+
+            is_free,
+            price_amount,
+            sale_price_amount,
+            currency,
+
+            access_type,
+            access_duration_days,
+            access_end_at,
+
+            created_by,
+
+            published_at,
+            archived_at,
+
+            created_at,
+            updated_at
+
+          FROM public.courses
+
+          WHERE id = $1
+
+          FOR UPDATE
+        `,
+    [courseId],
+  );
+
+  return result.rows[0] ?? null;
+};
+
+export const updateCourse = async (courseId, input, client) => {
+  const fieldMap = {
+    title: "title",
+
+    shortDescription: "short_description",
+
+    thumbnailUrl: "thumbnail_url",
+
+    visibility: "visibility",
+
+    isFree: "is_free",
+
+    priceAmount: "price_amount",
+
+    salePriceAmount: "sale_price_amount",
+
+    currency: "currency",
+
+    accessType: "access_type",
+
+    accessDurationDays: "access_duration_days",
+
+    accessEndAt: "access_end_at",
+  };
+
+  const updates = [];
+  const values = [];
+
+  let parameterIndex = 1;
+
+  for (const [apiField, dbColumn] of Object.entries(fieldMap)) {
+    if (Object.prototype.hasOwnProperty.call(input, apiField)) {
+      updates.push(`${dbColumn} = $${parameterIndex}`);
+
+      let value = input[apiField];
+
+      if (apiField === "accessEndAt" && value != null) {
+        value = new Date(value);
+      }
+
+      values.push(value);
+
+      parameterIndex++;
+    }
+  }
+
+  values.push(courseId);
+
+  const result = await client.query(
+    `
+          UPDATE public.courses
+
+          SET
+            ${updates.join(", ")},
+
+            updated_at = NOW()
+
+          WHERE id =
+            $${parameterIndex}
+
+          RETURNING
+            id,
+            title,
+            slug,
+
+            short_description,
+            thumbnail_url,
+
+            status,
+            visibility,
+
+            is_free,
+            price_amount,
+            sale_price_amount,
+            currency,
+
+            access_type,
+            access_duration_days,
+            access_end_at,
+
+            created_by,
+
+            published_at,
+            archived_at,
+
+            created_at,
+            updated_at
+        `,
+    values,
+  );
+
+  return result.rows[0] ?? null;
+};

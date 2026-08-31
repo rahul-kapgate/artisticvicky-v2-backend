@@ -2,11 +2,14 @@ import {
   parseCreateCourseInput,
   parseCourseId,
   parseUpdateCourseDetailsInput,
+  parseCourseId,
+  parseUpdateCourseInput,
 } from "./course-admin.validation.js";
 
 import {
   createAdminCourse,
   updateAdminCourseDetails,
+  updateAdminCourse,
 } from "./course-admin.service.js";
 
 export const createCourse = async (req, res) => {
@@ -48,6 +51,27 @@ export const updateCourseDetails = async (req, res) => {
 
     data: {
       details,
+    },
+  });
+};
+
+export const updateCourse = async (req, res) => {
+  const courseId = parseCourseId(req.params.id);
+
+  const input = parseUpdateCourseInput(req.body);
+
+  const course = await updateAdminCourse({
+    courseId,
+    input,
+  });
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Course updated successfully.",
+
+    data: {
+      course,
     },
   });
 };
