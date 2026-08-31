@@ -6,6 +6,8 @@ const requiredEnv = [
   "RESEND_API_KEY",
   "RESEND_FROM_EMAIL",
   "OTP_HMAC_SECRET",
+  "GOOGLE_WEB_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET"
 ];
 
 for (const key of requiredEnv) {
@@ -68,4 +70,6 @@ export const env = {
   refreshCookieName: process.env.REFRESH_COOKIE_NAME || "av_refresh_token",
 
   refreshCookieSameSite: process.env.REFRESH_COOKIE_SAME_SITE || "lax",
+
+  googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID,
 };
