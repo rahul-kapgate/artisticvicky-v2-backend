@@ -278,14 +278,20 @@ export const createUser = async (
         email,
         mobile,
         password_hash,
-        auth_provider
+        auth_provider,
+        role_id
       )
       VALUES (
         $1,
         $2,
         $3,
         $4,
-        'email'
+        'email',
+        (
+    SELECT id
+    FROM public.roles
+    WHERE slug = 'user'
+  )
       )
       RETURNING
         id,
@@ -294,6 +300,7 @@ export const createUser = async (
         mobile,
         profile_picture,
         auth_provider,
+        role_id,
         created_at
     `,
     [name, email, mobile, passwordHash],

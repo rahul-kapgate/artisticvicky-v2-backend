@@ -1,11 +1,6 @@
-export const findUserByGoogleIdForUpdate =
-  async (
-    googleId,
-    client
-  ) => {
-    const result =
-      await client.query(
-        `
+export const findUserByGoogleIdForUpdate = async (googleId, client) => {
+  const result = await client.query(
+    `
           SELECT
             id,
             name,
@@ -25,23 +20,15 @@ export const findUserByGoogleIdForUpdate =
 
           FOR UPDATE
         `,
-        [
-          googleId,
-        ]
-      );
+    [googleId],
+  );
 
-    return result.rows[0] ?? null;
-  };
+  return result.rows[0] ?? null;
+};
 
-
-export const findUserByEmailForUpdate =
-  async (
-    email,
-    client
-  ) => {
-    const result =
-      await client.query(
-        `
+export const findUserByEmailForUpdate = async (email, client) => {
+  const result = await client.query(
+    `
           SELECT
             id,
             name,
@@ -61,26 +48,15 @@ export const findUserByEmailForUpdate =
 
           FOR UPDATE
         `,
-        [
-          email,
-        ]
-      );
+    [email],
+  );
 
-    return result.rows[0] ?? null;
-  };
+  return result.rows[0] ?? null;
+};
 
-
-export const linkGoogleAccount =
-  async (
-    {
-      userId,
-      googleId,
-    },
-    client
-  ) => {
-    const result =
-      await client.query(
-        `
+export const linkGoogleAccount = async ({ userId, googleId }, client) => {
+  const result = await client.query(
+    `
           UPDATE public.users
 
           SET
@@ -108,29 +84,18 @@ export const linkGoogleAccount =
             password_hash,
             password_changed_at
         `,
-        [
-          userId,
-          googleId,
-        ]
-      );
+    [userId, googleId],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
 
-
-export const createGoogleUser =
-  async (
-    {
-      name,
-      email,
-      googleId,
-      profilePicture,
-    },
-    client
-  ) => {
-    const result =
-      await client.query(
-        `
+export const createGoogleUser = async (
+  { name, email, googleId, profilePicture },
+  client,
+) => {
+  const result = await client.query(
+    `
           INSERT INTO public.users
           (
             name,
@@ -138,7 +103,8 @@ export const createGoogleUser =
             google_id,
             profile_picture,
             auth_provider,
-            password_hash
+            password_hash,
+            role_id
           )
 
           VALUES
@@ -148,8 +114,13 @@ export const createGoogleUser =
             $3,
             $4,
             'google',
-            NULL
+            NULL,
+            (
+            SELECT id
+            FROM public.roles
+            WHERE slug = 'user'
           )
+          ),
 
           RETURNING
             id,
@@ -161,14 +132,10 @@ export const createGoogleUser =
             auth_provider,
             password_hash,
             password_changed_at
+            role_id
         `,
-        [
-          name,
-          email,
-          googleId,
-          profilePicture ?? null,
-        ]
-      );
+    [name, email, googleId, profilePicture ?? null],
+  );
 
-    return result.rows[0];
-  };
+  return result.rows[0];
+};
