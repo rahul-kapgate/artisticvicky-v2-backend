@@ -11,6 +11,9 @@ import {
   updateCourseDetails,
   getCourseForUpdate,
   updateCourse,
+  getCourseForPublish,
+  publishCourse,
+  archiveCourse,
 } from "./course-admin.repository.js";
 
 import AppError from "../../../utils/AppError.js";
@@ -29,6 +32,68 @@ const resolveUniqueSlug = (baseSlug, existingSlugs) => {
   }
 
   return `${baseSlug}-${suffix}`;
+};
+
+const validateCourseForPublish = ({ course, details }) => {
+  const missingFields = [];
+
+  if (!course.title?.trim()) {
+    missingFields.push("title");
+  }
+
+  if (!course.slug?.trim()) {
+    missingFields.push("slug");
+  }
+
+  if (!course.short_description?.trim()) {
+    missingFields.push("shortDescription");
+  }
+
+  if (!course.thumbnail_url?.trim()) {
+    missingFields.push("thumbnailUrl");
+  }
+
+  if (!details?.description?.trim()) {
+    missingFields.push("description");
+  }
+
+  /*
+   * Paid course.
+   */
+  if (!course.is_free && Number(course.price_amount) <= 0) {
+    missingFields.push("priceAmount");
+  }
+
+  /*
+   * Duration course.
+   */
+  if (
+    course.access_type === "duration" &&
+    (!course.access_duration_days || course.access_duration_days <= 0)
+  ) {
+    missingFields.push("accessDurationDays");
+  }
+
+  /*
+   * Fixed-date course.
+   */
+  if (course.access_type === "fixed_date") {
+    if (!course.access_end_at) {
+      missingFields.push("accessEndAt");
+    } else if (new Date(course.access_end_at).getTime() <= Date.now()) {
+      throw new AppError("Course access end date must be in the future.", 400, {
+        code: "COURSE_ACCESS_EXPIRED",
+      });
+    }
+  }
+
+  if (missingFields.length > 0) {
+    throw new AppError("Course cannot be published yet.", 400, {
+      code: "COURSE_NOT_READY",
+
+      missingFields,
+    });
+  }
 };
 
 export const createAdminCourse = async ({ input, adminUserId }) => {
@@ -206,6 +271,110 @@ export const updateAdminCourse = async ({ courseId, input }) => {
       await client.query("ROLLBACK");
     } catch {
       // ignore rollback error
+    }
+
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const publishAdminCourse = async ({ courseId }) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const data = await getCourseForPublish(courseId, client);
+
+    if (!data) {
+      throw new AppError("Course not found.", 404, {
+        code: "COURSE_NOT_FOUND",
+      });
+    }
+
+    /*
+     * Already published.
+     *
+     * Keep endpoint idempotent.
+     */
+    if (data.course.status === "published") {
+      await client.query("COMMIT");
+
+      return data.course;
+    }
+
+    /*
+     * Draft or archived course
+     * can be published.
+     */
+    validateCourseForPublish(data);
+
+    const course = await publishCourse(courseId, client);
+
+    await client.query("COMMIT");
+
+    return course;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore
+    }
+
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const archiveAdminCourse = async ({ courseId }) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const data = await getCourseForPublish(courseId, client);
+
+    if (!data) {
+      throw new AppError("Course not found.", 404, {
+        code: "COURSE_NOT_FOUND",
+      });
+    }
+
+    /*
+     * Already archived.
+     *
+     * Treat as success.
+     */
+    if (data.course.status === "archived") {
+      await client.query("COMMIT");
+
+      return data.course;
+    }
+
+    /*
+     * Don't archive a draft.
+     *
+     * Draft can simply remain draft
+     * or be deleted.
+     */
+    if (data.course.status === "draft") {
+      throw new AppError("Draft course cannot be archived.", 409, {
+        code: "INVALID_COURSE_STATUS",
+      });
+    }
+
+    const course = await archiveCourse(courseId, client);
+
+    await client.query("COMMIT");
+
+    return course;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore
     }
 
     throw error;

@@ -444,3 +444,169 @@ export const updateCourse = async (courseId, input, client) => {
 
   return result.rows[0] ?? null;
 };
+
+export const getCourseForPublish = async (courseId, client) => {
+  /*
+   * Lock main course row.
+   */
+  const courseResult = await client.query(
+    `
+          SELECT
+            id,
+            title,
+            slug,
+            short_description,
+            thumbnail_url,
+
+            status,
+            visibility,
+
+            is_free,
+            price_amount,
+            sale_price_amount,
+            currency,
+
+            access_type,
+            access_duration_days,
+            access_end_at,
+
+            published_at,
+            archived_at
+
+          FROM public.courses
+
+          WHERE id = $1
+
+          FOR UPDATE
+        `,
+    [courseId],
+  );
+
+  const course = courseResult.rows[0] ?? null;
+
+  if (!course) {
+    return null;
+  }
+
+  const detailsResult = await client.query(
+    `
+          SELECT
+            id,
+            course_id,
+
+            subtitle,
+            description,
+            banner_url,
+
+            category,
+            level,
+            language,
+
+            what_you_will_learn,
+            course_includes,
+            course_highlights,
+
+            estimated_duration_minutes,
+
+            certificate_available,
+            live_classes_available,
+
+            whatsapp_contact
+
+          FROM public.course_details
+
+          WHERE course_id = $1
+
+          LIMIT 1
+        `,
+    [courseId],
+  );
+
+  return {
+    course,
+
+    details: detailsResult.rows[0] ?? null,
+  };
+};
+
+export const publishCourse = async (courseId, client) => {
+  const result = await client.query(
+    `
+          UPDATE public.courses
+
+          SET
+            status = 'published',
+
+            published_at = NOW(),
+
+            archived_at = NULL,
+
+            updated_at = NOW()
+
+          WHERE id = $1
+
+          RETURNING
+            id,
+            title,
+            slug,
+            short_description,
+            thumbnail_url,
+
+            status,
+            visibility,
+
+            is_free,
+            price_amount,
+            sale_price_amount,
+            currency,
+
+            access_type,
+            access_duration_days,
+            access_end_at,
+
+            created_by,
+
+            published_at,
+            archived_at,
+
+            created_at,
+            updated_at
+        `,
+    [courseId],
+  );
+
+  return result.rows[0] ?? null;
+};
+
+export const archiveCourse = async (courseId, client) => {
+  const result = await client.query(
+    `
+          UPDATE public.courses
+
+          SET
+            status = 'archived',
+
+            archived_at = NOW(),
+
+            updated_at = NOW()
+
+          WHERE id = $1
+
+          RETURNING
+            id,
+            title,
+            slug,
+
+            status,
+            visibility,
+
+            published_at,
+            archived_at,
+
+            updated_at
+        `,
+    [courseId],
+  );
+
+  return result.rows[0] ?? null;
+};

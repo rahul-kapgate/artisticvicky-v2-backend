@@ -10,6 +10,8 @@ import {
   createAdminCourse,
   updateAdminCourseDetails,
   updateAdminCourse,
+  publishAdminCourse,
+  archiveAdminCourse,
 } from "./course-admin.service.js";
 
 export const createCourse = async (req, res) => {
@@ -69,6 +71,42 @@ export const updateCourse = async (req, res) => {
     success: true,
 
     message: "Course updated successfully.",
+
+    data: {
+      course,
+    },
+  });
+};
+
+export const publishCourse = async (req, res) => {
+  const courseId = parseCourseId(req.params.id);
+
+  const course = await publishAdminCourse({
+    courseId,
+  });
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Course published successfully.",
+
+    data: {
+      course,
+    },
+  });
+};
+
+export const archiveCourse = async (req, res) => {
+  const courseId = parseCourseId(req.params.id);
+
+  const course = await archiveAdminCourse({
+    courseId,
+  });
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Course archived successfully.",
 
     data: {
       course,

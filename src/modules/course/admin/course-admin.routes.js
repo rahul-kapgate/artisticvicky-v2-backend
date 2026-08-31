@@ -8,6 +8,8 @@ import {
   createCourse,
   updateCourse,
   updateCourseDetails,
+  publishCourse,
+  archiveCourse,
 } from "./course-admin.controller.js";
 
 const router = Router();
@@ -21,5 +23,9 @@ router.post("/", createCourse);
 router.patch("/:id", updateCourse);
 
 router.patch("/:id/details", updateCourseDetails);
+
+router.post("/:id/publish", publishCourse);
+
+router.post("/:id/archive", archiveCourse);
 
 export default router;

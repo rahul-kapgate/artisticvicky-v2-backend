@@ -1,6 +1,4 @@
-import {
-  validateResolvedCourseInput,
-} from "../../src/modules/course/admin/course-admin.validation.js";
+import { validateResolvedCourseInput } from "../../src/modules/course/admin/course-admin.validation.js";
 
 describe("course update validation", () => {
   test("rejects paid course with zero price", () => {
@@ -13,7 +11,7 @@ describe("course update validation", () => {
         accessType: "lifetime",
         accessDurationDays: null,
         accessEndAt: null,
-      })
+      }),
     ).toThrow();
   });
 
@@ -27,7 +25,7 @@ describe("course update validation", () => {
         accessType: "lifetime",
         accessDurationDays: null,
         accessEndAt: null,
-      })
+      }),
     ).toThrow();
   });
 
@@ -41,7 +39,7 @@ describe("course update validation", () => {
         accessType: "duration",
         accessDurationDays: 90,
         accessEndAt: null,
-      })
+      }),
     ).not.toThrow();
   });
 
@@ -55,7 +53,17 @@ describe("course update validation", () => {
         accessType: "fixed_date",
         accessDurationDays: null,
         accessEndAt: "2020-01-01T00:00:00.000Z",
-      })
+      }),
     ).toThrow();
   });
+});
+
+describe("course publishing", () => {
+  test("rejects publishing when required fields are missing", () => {});
+
+  test("rejects fixed-date course when access end date has passed", () => {});
+
+  test("publishes a valid draft course", () => {});
+
+  test("archives a published course", () => {});
 });
