@@ -33,7 +33,8 @@ export const createCourse = async (
     slug,
 
     shortDescription,
-    thumbnailUrl,
+    thumbnailPath,
+    thumbnailFileId,
 
     visibility,
 
@@ -58,7 +59,8 @@ export const createCourse = async (
           slug,
 
           short_description,
-          thumbnail_url,
+          thumbnail_path,
+          thumbnail_file_id,
 
           status,
           visibility,
@@ -82,10 +84,10 @@ export const createCourse = async (
 
           $3,
           $4,
-
-          'draft',
           $5,
 
+          'draft',
+          
           $6,
           $7,
           $8,
@@ -95,7 +97,8 @@ export const createCourse = async (
           $11,
           $12,
 
-          $13
+          $13,
+          $14
         )
 
         RETURNING
@@ -104,7 +107,8 @@ export const createCourse = async (
           slug,
 
           short_description,
-          thumbnail_url,
+          thumbnail_path,
+          thumbnail_file_id,
 
           status,
           visibility,
@@ -131,7 +135,8 @@ export const createCourse = async (
       slug,
 
       shortDescription ?? null,
-      thumbnailUrl ?? null,
+      thumbnailPath ?? null,
+      thumbnailFileId ?? null,
 
       visibility,
 
@@ -152,22 +157,29 @@ export const createCourse = async (
   return result.rows[0];
 };
 
-export const createCourseDetails = async (courseId, client) => {
+export const createCourseDetails = async (
+  courseId,
+  { bannerPath, bannerFileId },
+  client,
+) => {
   const result = await client.query(
     `
         INSERT INTO public.course_details
         (
-          course_id
+          course_id,
+          banner_path,
+          banner_file_id
         )
 
-        VALUES ($1)
+        VALUES ($1, $2, $3)
 
         RETURNING
           id,
           course_id,
           subtitle,
           description,
-          banner_url,
+          banner_path,
+        banner_file_id,
           category,
           level,
           language,
@@ -181,7 +193,7 @@ export const createCourseDetails = async (courseId, client) => {
           created_at,
           updated_at
       `,
-    [courseId],
+    [courseId, bannerPath ?? null, bannerFileId ?? null],
   );
 
   return result.rows[0];
@@ -220,7 +232,9 @@ export const updateCourseDetails = async (courseId, input, client) => {
 
     description: "description",
 
-    bannerUrl: "banner_url",
+    bannerPath: "banner_path",
+
+    bannerFileId: "banner_file_id",
 
     category: "category",
 
@@ -284,7 +298,8 @@ export const updateCourseDetails = async (courseId, input, client) => {
 
             subtitle,
             description,
-            banner_url,
+            banner_path,
+            banner_file_id,
 
             category,
             level,
@@ -319,7 +334,8 @@ export const getCourseForUpdate = async (courseId, client) => {
             slug,
 
             short_description,
-            thumbnail_url,
+            thumbnail_path,
+            thumbnail_file_id,
 
             status,
             visibility,
@@ -359,7 +375,9 @@ export const updateCourse = async (courseId, input, client) => {
 
     shortDescription: "short_description",
 
-    thumbnailUrl: "thumbnail_url",
+    thumbnailPath: "thumbnail_path",
+
+    thumbnailFileId: "thumbnail_file_id",
 
     visibility: "visibility",
 
@@ -419,7 +437,8 @@ export const updateCourse = async (courseId, input, client) => {
             slug,
 
             short_description,
-            thumbnail_url,
+            thumbnail_path,
+            thumbnail_file_id,
 
             status,
             visibility,
@@ -458,7 +477,8 @@ export const getCourseForPublish = async (courseId, client) => {
             title,
             slug,
             short_description,
-            thumbnail_url,
+            thumbnail_path,
+            thumbnail_file_id
 
             status,
             visibility,
@@ -498,7 +518,8 @@ export const getCourseForPublish = async (courseId, client) => {
 
             subtitle,
             description,
-            banner_url,
+            banner_path,
+            banner_file_id,
 
             category,
             level,
@@ -677,7 +698,8 @@ export const listAdminCourses = async ({ page, limit, status, search }) => {
             c.slug,
 
             c.short_description,
-            c.thumbnail_url,
+            c.thumbnail_path,
+            c.thumbnail_file_id,
 
             c.status,
             c.visibility,
@@ -740,7 +762,8 @@ export const getAdminCourseById = async (courseId) => {
             c.slug,
 
             c.short_description,
-            c.thumbnail_url,
+            c.thumbnail_path,
+            c.thumbnail_file_id,
 
             c.status,
             c.visibility,
@@ -767,7 +790,8 @@ export const getAdminCourseById = async (courseId) => {
 
             d.subtitle,
             d.description,
-            d.banner_url,
+            d.banner_path,
+            d.banner_file_id,
 
             d.category,
             d.level,

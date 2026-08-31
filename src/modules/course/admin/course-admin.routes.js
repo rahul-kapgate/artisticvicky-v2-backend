@@ -1,7 +1,6 @@
 import { Router } from "express";
 
 import { authenticate } from "../../../middlewares/authenticate.js";
-
 import { requireRole } from "../../../middlewares/requireRole.js";
 
 import {
@@ -12,6 +11,7 @@ import {
   archiveCourse,
   listCourses,
   getCourse,
+  getCourseImageUploadAuth,
 } from "./course-admin.controller.js";
 
 const router = Router();
@@ -22,6 +22,10 @@ router.use(requireRole("admin"));
 
 router.post("/", createCourse);
 
+router.get("/upload-auth", getCourseImageUploadAuth);
+
+router.get("/", listCourses);
+
 router.patch("/:id", updateCourse);
 
 router.patch("/:id/details", updateCourseDetails);
@@ -29,8 +33,6 @@ router.patch("/:id/details", updateCourseDetails);
 router.post("/:id/publish", publishCourse);
 
 router.post("/:id/archive", archiveCourse);
-
-router.get("/", listCourses);
 
 router.get("/:id", getCourse);
 

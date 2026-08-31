@@ -12,7 +12,23 @@ const createCourseSchema = z
 
     shortDescription: z.string().trim().max(500).optional().nullable(),
 
-    thumbnailUrl: z.string().url("Invalid thumbnail URL").optional().nullable(),
+    thumbnailPath: z
+      .string()
+      .trim()
+      .startsWith("/courses/thumbnails/")
+      .optional()
+      .nullable(),
+
+    thumbnailFileId: z.string().trim().min(1).optional().nullable(),
+
+    bannerPath: z
+      .string()
+      .trim()
+      .startsWith("/courses/banners/")
+      .optional()
+      .nullable(),
+
+    bannerFileId: z.string().trim().min(1).optional().nullable(),
 
     visibility: z.enum(["public", "unlisted"]).default("public"),
 
@@ -152,6 +168,26 @@ const createCourseSchema = z
         });
       }
     }
+
+    if (Boolean(data.thumbnailPath) !== Boolean(data.thumbnailFileId)) {
+      ctx.addIssue({
+        code: "custom",
+
+        path: ["thumbnailPath"],
+
+        message: "thumbnailPath and thumbnailFileId must be provided together",
+      });
+    }
+
+    if (Boolean(data.bannerPath) !== Boolean(data.bannerFileId)) {
+      ctx.addIssue({
+        code: "custom",
+
+        path: ["bannerPath"],
+
+        message: "bannerPath and bannerFileId must be provided together",
+      });
+    }
   });
 
 const detailArraySchema = z.array(z.string().trim().min(1).max(250)).max(50);
@@ -162,7 +198,14 @@ const updateCourseDetailsSchema = z
 
     description: z.string().trim().max(20000).nullable().optional(),
 
-    bannerUrl: z.string().url("Invalid banner URL").nullable().optional(),
+    bannerPath: z
+      .string()
+      .trim()
+      .startsWith("/courses/banners/")
+      .nullable()
+      .optional(),
+
+    bannerFileId: z.string().trim().min(1).nullable().optional(),
 
     category: z.string().trim().max(100).nullable().optional(),
 
@@ -194,7 +237,14 @@ const updateCourseSchema = z
 
     shortDescription: z.string().trim().max(500).nullable().optional(),
 
-    thumbnailUrl: z.string().url("Invalid thumbnail URL").nullable().optional(),
+    thumbnailPath: z
+      .string()
+      .trim()
+      .startsWith("/courses/thumbnails/")
+      .nullable()
+      .optional(),
+
+    thumbnailFileId: z.string().trim().min(1).nullable().optional(),
 
     visibility: z.enum(["public", "unlisted"]).optional(),
 

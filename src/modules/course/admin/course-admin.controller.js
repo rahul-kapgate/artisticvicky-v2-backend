@@ -15,6 +15,8 @@ import {
   getAdminCourse,
 } from "./course-admin.service.js";
 
+import { imagekit } from "../../../services/imagekit/imagekit.client.js";
+
 export const createCourse = async (req, res) => {
   const input = parseCreateCourseInput(req.body);
 
@@ -139,6 +141,28 @@ export const getCourse = async (req, res) => {
 
     data: {
       course,
+    },
+  });
+};
+
+
+export const getCourseImageUploadAuth = async (req, res) => {
+  const {
+    token,
+    expire,
+    signature,
+  } = imagekit.helper.getAuthenticationParameters();
+
+  return res.status(200).json({
+    success: true,
+
+    data: {
+      token,
+      expire,
+      signature,
+
+      publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
     },
   });
 };
