@@ -14,6 +14,8 @@ import {
   getCourseForPublish,
   publishCourse,
   archiveCourse,
+  listAdminCourses,
+  getAdminCourseById,
 } from "./course-admin.repository.js";
 
 import AppError from "../../../utils/AppError.js";
@@ -381,4 +383,37 @@ export const archiveAdminCourse = async ({ courseId }) => {
   } finally {
     client.release();
   }
+};
+
+export const getAdminCourses = async ({ page, limit, status, search }) => {
+  const { courses, total } = await listAdminCourses({
+    page,
+    limit,
+    status,
+    search,
+  });
+
+  return {
+    courses,
+
+    pagination: {
+      page,
+      limit,
+      total,
+
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+export const getAdminCourse = async ({ courseId }) => {
+  const course = await getAdminCourseById(courseId);
+
+  if (!course) {
+    throw new AppError("Course not found.", 404, {
+      code: "COURSE_NOT_FOUND",
+    });
+  }
+
+  return course;
 };

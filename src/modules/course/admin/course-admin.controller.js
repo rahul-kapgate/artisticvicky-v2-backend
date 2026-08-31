@@ -1,9 +1,8 @@
 import {
   parseCreateCourseInput,
-  parseCourseId,
   parseUpdateCourseDetailsInput,
-  parseCourseId,
   parseUpdateCourseInput,
+  parseAdminCourseListQuery,
 } from "./course-admin.validation.js";
 
 import {
@@ -12,6 +11,8 @@ import {
   updateAdminCourse,
   publishAdminCourse,
   archiveAdminCourse,
+  getAdminCourses,
+  getAdminCourse,
 } from "./course-admin.service.js";
 
 export const createCourse = async (req, res) => {
@@ -107,6 +108,34 @@ export const archiveCourse = async (req, res) => {
     success: true,
 
     message: "Course archived successfully.",
+
+    data: {
+      course,
+    },
+  });
+};
+
+export const listCourses = async (req, res) => {
+  const query = parseAdminCourseListQuery(req.query);
+
+  const result = await getAdminCourses(query);
+
+  return res.status(200).json({
+    success: true,
+
+    data: result,
+  });
+};
+
+export const getCourse = async (req, res) => {
+  const courseId = parseCourseId(req.params.id);
+
+  const course = await getAdminCourse({
+    courseId,
+  });
+
+  return res.status(200).json({
+    success: true,
 
     data: {
       course,

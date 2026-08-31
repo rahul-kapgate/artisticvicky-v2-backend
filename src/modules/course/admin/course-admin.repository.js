@@ -1,3 +1,5 @@
+import { pool } from "../../../config/database.js";
+
 export const lockCourseSlug = async (baseSlug, client) => {
   await client.query(
     `
@@ -604,6 +606,199 @@ export const archiveCourse = async (courseId, client) => {
             archived_at,
 
             updated_at
+        `,
+    [courseId],
+  );
+
+  return result.rows[0] ?? null;
+};
+
+export const listAdminCourses = async ({ page, limit, status, search }) => {
+  const offset = (page - 1) * limit;
+
+  const conditions = [];
+
+  const values = [];
+
+  let parameterIndex = 1;
+
+  if (status) {
+    conditions.push(`c.status = $${parameterIndex}`);
+
+    values.push(status);
+
+    parameterIndex++;
+  }
+
+  if (search) {
+    conditions.push(
+      `
+          (
+            c.title ILIKE $${parameterIndex}
+            OR
+            c.slug ILIKE $${parameterIndex}
+          )
+        `,
+    );
+
+    values.push(`%${search}%`);
+
+    parameterIndex++;
+  }
+
+  const whereClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  /*
+   * Count first.
+   */
+  const countResult = await pool.query(
+    `
+          SELECT COUNT(*)::integer
+            AS total
+
+          FROM public.courses c
+
+          ${whereClause}
+        `,
+    values,
+  );
+
+  /*
+   * Add pagination parameters.
+   */
+  const listValues = [...values, limit, offset];
+
+  const result = await pool.query(
+    `
+          SELECT
+            c.id,
+            c.title,
+            c.slug,
+
+            c.short_description,
+            c.thumbnail_url,
+
+            c.status,
+            c.visibility,
+
+            c.is_free,
+            c.price_amount,
+            c.sale_price_amount,
+            c.currency,
+
+            c.access_type,
+            c.access_duration_days,
+            c.access_end_at,
+
+            c.created_by,
+
+            c.published_at,
+            c.archived_at,
+
+            c.created_at,
+            c.updated_at,
+
+            d.category,
+
+            u.name AS created_by_name,
+            u.email AS created_by_email
+
+          FROM public.courses c
+
+          LEFT JOIN public.course_details d
+            ON d.course_id = c.id
+
+          INNER JOIN public.users u
+            ON u.id = c.created_by
+
+          ${whereClause}
+
+          ORDER BY
+            c.created_at DESC
+
+          LIMIT $${parameterIndex}
+
+          OFFSET $${parameterIndex + 1}
+        `,
+    listValues,
+  );
+
+  return {
+    courses: result.rows,
+
+    total: countResult.rows[0].total,
+  };
+};
+
+export const getAdminCourseById = async (courseId) => {
+  const result = await pool.query(
+    `
+          SELECT
+            c.id,
+            c.title,
+            c.slug,
+
+            c.short_description,
+            c.thumbnail_url,
+
+            c.status,
+            c.visibility,
+
+            c.is_free,
+            c.price_amount,
+            c.sale_price_amount,
+            c.currency,
+
+            c.access_type,
+            c.access_duration_days,
+            c.access_end_at,
+
+            c.created_by,
+
+            c.published_at,
+            c.archived_at,
+
+            c.created_at,
+            c.updated_at,
+
+
+            d.id AS detail_id,
+
+            d.subtitle,
+            d.description,
+            d.banner_url,
+
+            d.category,
+            d.level,
+            d.language,
+
+            d.what_you_will_learn,
+            d.course_includes,
+            d.course_highlights,
+
+            d.estimated_duration_minutes,
+
+            d.certificate_available,
+            d.live_classes_available,
+
+            d.whatsapp_contact,
+
+
+            u.name AS created_by_name,
+            u.email AS created_by_email
+
+          FROM public.courses c
+
+          LEFT JOIN public.course_details d
+            ON d.course_id = c.id
+
+          INNER JOIN public.users u
+            ON u.id = c.created_by
+
+          WHERE c.id = $1
+
+          LIMIT 1
         `,
     [courseId],
   );

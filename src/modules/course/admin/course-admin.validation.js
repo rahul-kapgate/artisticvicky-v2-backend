@@ -402,3 +402,31 @@ export const validateResolvedCourseInput = (data) => {
 
   return data;
 };
+
+const adminCourseListSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+
+  status: z.enum(["draft", "published", "archived"]).optional(),
+
+  search: z.string().trim().max(100).optional(),
+});
+
+export const parseAdminCourseListQuery = (query) => {
+  const result = adminCourseListSchema.safeParse(query);
+
+  if (!result.success) {
+    throw new AppError("Validation failed", 400, {
+      code: "VALIDATION_ERROR",
+
+      details: result.error.issues.map((issue) => ({
+        field: issue.path.join("."),
+
+        message: issue.message,
+      })),
+    });
+  }
+
+  return result.data;
+};
