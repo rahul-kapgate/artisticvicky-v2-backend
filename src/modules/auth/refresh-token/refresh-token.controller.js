@@ -1,198 +1,60 @@
-import {
-  pool,
-} from "../../../config/database.js";
+import { env } from "../../../config/env.js";
 
-import {
-  env,
-} from "../../../config/env.js";
+import { refreshSession } from "./refresh-token.service.js";
 
-import AppError
-  from "../../../utils/AppError.js";
+const refreshCookieOptions = (expiresAt) => ({
+  httpOnly: true,
 
-import {
-  generateAccessToken,
-} from "../../../utils/accessToken.js";
+  secure: env.nodeEnv === "production",
 
-import {
-  generateRefreshToken,
-  hashRefreshToken,
-} from "../../../utils/refreshToken.js";
+  sameSite: "lax",
 
-import {
-  getSessionForRefresh,
-  rotateRefreshToken,
-  revokeRefreshSession,
-} from "./refresh-token.repository.js";
+  path: "/api/v1/auth",
 
-const invalidSession = () =>
-  new AppError(
-    "Session is invalid or expired.",
-    401,
-    {
-      code:
-        "INVALID_SESSION",
-    }
-  );
+  expires: new Date(expiresAt),
+});
 
-export const refreshSession =
-  async ({
+export const refresh = async (req, res) => {
+  /*
+   * Web → cookie
+   * Mobile → request body
+   */
+  const refreshToken =
+    req.cookies?.[env.refreshCookieName] || req.body?.refreshToken;
+
+  const result = await refreshSession({
     refreshToken,
-    ipAddress,
-    userAgent,
-  }) => {
-    if (!refreshToken) {
-      throw invalidSession();
-    }
 
-    const oldHash =
-      hashRefreshToken(
-        refreshToken
-      );
+    ipAddress: req.ip,
 
-    const newRefreshToken =
-      generateRefreshToken();
+    userAgent: req.get("user-agent") ?? null,
+  });
 
-    const newHash =
-      hashRefreshToken(
-        newRefreshToken
-      );
+  if (result.platform === "web") {
+    res.cookie(
+      env.refreshCookieName,
 
-    const client =
-      await pool.connect();
+      result.refreshToken,
 
-    let session;
-    let committed = false;
+      refreshCookieOptions(result.sessionExpiresAt),
+    );
+  }
 
-    try {
-      await client.query(
-        "BEGIN"
-      );
+  return res.status(200).json({
+    success: true,
 
-      session =
-        await getSessionForRefresh(
-          oldHash,
-          client
-        );
+    data: {
+      accessToken: result.accessToken,
 
-      if (
-        !session ||
-        session.revoked_at
-      ) {
-        throw invalidSession();
-      }
+      accessTokenExpiresIn: result.accessTokenExpiresIn,
 
-      if (
-        new Date(
-          session.expires_at
-        ).getTime() <=
-        Date.now()
-      ) {
-        await revokeRefreshSession(
-          {
-            sessionId:
-              session.session_id,
+      sessionExpiresAt: result.sessionExpiresAt,
 
-            reason:
-              "expired",
-          },
-          client
-        );
-
-        await client.query(
-          "COMMIT"
-        );
-
-        committed = true;
-
-        throw invalidSession();
-      }
-
-      /*
-       * Password changed after login.
-       */
-      if (
-        session.password_changed_at &&
-        new Date(
-          session.password_changed_at
-        ).getTime() >
-          new Date(
-            session.created_at
-          ).getTime()
-      ) {
-        await revokeRefreshSession(
-          {
-            sessionId:
-              session.session_id,
-
-            reason:
-              "password_changed",
-          },
-          client
-        );
-
-        await client.query(
-          "COMMIT"
-        );
-
-        committed = true;
-
-        throw invalidSession();
-      }
-
-      await rotateRefreshToken(
-        {
-          sessionId:
-            session.session_id,
-
-          refreshTokenHash:
-            newHash,
-
-          ipAddress,
-          userAgent,
-        },
-        client
-      );
-
-      await client.query(
-        "COMMIT"
-      );
-
-      committed = true;
-    } catch (error) {
-      if (!committed) {
-        await client.query(
-          "ROLLBACK"
-        );
-      }
-
-      throw error;
-    } finally {
-      client.release();
-    }
-
-    const accessToken =
-      generateAccessToken({
-        userId:
-          session.user_id,
-
-        sessionId:
-          session.session_id,
-      });
-
-    return {
-      accessToken,
-
-      refreshToken:
-        newRefreshToken,
-
-      accessTokenExpiresIn:
-        env.accessTokenExpiryMinutes *
-        60,
-
-      sessionExpiresAt:
-        session.expires_at,
-
-      platform:
-        session.platform,
-    };
-  };
+      ...(result.platform !== "web"
+        ? {
+            refreshToken: result.refreshToken,
+          }
+        : {}),
+    },
+  });
+};
