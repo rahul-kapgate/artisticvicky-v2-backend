@@ -145,13 +145,9 @@ export const getCourse = async (req, res) => {
   });
 };
 
-
 export const getCourseImageUploadAuth = async (req, res) => {
-  const {
-    token,
-    expire,
-    signature,
-  } = imagekit.helper.getAuthenticationParameters();
+  const { token, expire, signature } =
+    imagekit.helper.getAuthenticationParameters();
 
   return res.status(200).json({
     success: true,
