@@ -1,0 +1,92 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Login user
+
+  description: |
+    Authenticates a user using email and password.
+
+    For web clients, the refresh token is stored in an HttpOnly cookie.
+
+    For Android and iOS clients, the refresh token is returned in the response
+    so it can be stored securely by the mobile application.
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/auth.yaml#/LoginRequest"
+
+        examples:
+
+          web:
+            summary: Web login
+            value:
+              email: user@example.com
+              password: Password123
+              deviceId: 550e8400-e29b-41d4-a716-446655440000
+              deviceName: Chrome
+              platform: web
+
+          android:
+            summary: Android login
+            value:
+              email: user@example.com
+              password: Password123
+              deviceId: 550e8400-e29b-41d4-a716-446655440000
+              deviceName: Samsung Galaxy
+              platform: android
+
+          ios:
+            summary: iOS login
+            value:
+              email: user@example.com
+              password: Password123
+              deviceId: 550e8400-e29b-41d4-a716-446655440000
+              deviceName: iPhone
+              platform: ios
+
+  responses:
+
+    "200":
+      description: Login successful
+
+      headers:
+        Set-Cookie:
+          description: |
+            For web clients, the refresh token is returned as an HttpOnly cookie.
+          schema:
+            type: string
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/LoginResponse"
+
+    "400":
+      description: Validation failed
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+    "401":
+      description: Invalid email or password
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+    "429":
+      description: Too many login attempts
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"

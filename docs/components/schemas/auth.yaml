@@ -1,0 +1,78 @@
+LoginRequest:
+  type: object
+
+  required:
+    - email
+    - password
+    - deviceId
+    - platform
+
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      example: user@example.com
+
+    password:
+      type: string
+      format: password
+      minLength: 1
+      maxLength: 128
+      example: Password123
+
+    deviceId:
+      type: string
+      format: uuid
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+    deviceName:
+      type: string
+      maxLength: 150
+      nullable: true
+      example: Chrome
+
+    platform:
+      type: string
+      enum:
+        - web
+        - android
+        - ios
+      example: web
+
+
+LoginResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: Login successful.
+
+    data:
+      type: object
+
+      properties:
+        user:
+          $ref: "./user.yaml#/User"
+
+        accessToken:
+          type: string
+          description: JWT access token
+
+        accessTokenExpiresIn:
+          type: integer
+          example: 15
+
+        sessionExpiresAt:
+          type: string
+          format: date-time
+
+        refreshToken:
+          type: string
+          nullable: true
+          description: Returned only for Android and iOS clients.

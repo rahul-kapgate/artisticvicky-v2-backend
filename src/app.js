@@ -6,7 +6,9 @@ import pinoHttp from "pino-http";
 import logger from "./config/logger.js";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
-import YAML from "yamljs";
+import SwaggerParser from "@apidevtools/swagger-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 
 import authRoutes from "./routes/auth.routes.js";
@@ -14,7 +16,12 @@ import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
-const swaggerDocument = YAML.load("./docs/openapi.yaml");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const openApiPath = path.join(__dirname, "../docs/openapi.yaml");
+
+const swaggerDocument = await SwaggerParser.dereference(openApiPath);
 
 app.use(cookieParser());
 app.use(

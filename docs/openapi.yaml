@@ -2,16 +2,19 @@ openapi: 3.0.3
 
 info:
   title: Artistic Vicky API V3
-  description: API documentation for Artistic Vicky backend
+  description: API documentation for the Artistic Vicky platform
   version: 1.0.0
 
 servers:
   - url: http://localhost:5000
-    description: Local server
+    description: Local development
 
 tags:
   - name: Health
     description: Server health APIs
+
+  - name: Authentication
+    description: Authentication APIs
 
 paths:
 
@@ -19,7 +22,10 @@ paths:
     get:
       tags:
         - Health
+
       summary: Check server health
+
+      description: Returns the current health status of the API server.
 
       responses:
         "200":
@@ -32,6 +38,26 @@ paths:
                   success:
                     type: boolean
                     example: true
+
                   message:
                     type: string
                     example: Server is healthy
+
+  /api/v1/auth/login:
+    $ref: "./paths/auth/login.yaml"
+
+components:
+
+  schemas:
+
+    LoginRequest:
+      $ref: "./components/schemas/auth.yaml#/LoginRequest"
+
+    LoginResponse:
+      $ref: "./components/schemas/auth.yaml#/LoginResponse"
+
+    User:
+      $ref: "./components/schemas/user.yaml#/User"
+
+    ErrorResponse:
+      $ref: "./components/schemas/common.yaml#/ErrorResponse"

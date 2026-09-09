@@ -1,0 +1,4 @@
+User:
+  type: object
+  description: Authenticated user information
+  additionalProperties: true

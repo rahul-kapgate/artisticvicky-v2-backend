@@ -12,6 +12,7 @@
     "dev": "cross-env NODE_ENV=development nodemon src/server.js"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^13.0.0",
     "@imagekit/nodejs": "^7.11.0",
     "argon2": "^0.45.1",
     "compression": "^1.8.1",
@@ -32,7 +33,6 @@
     "resend": "^6.24.0",
     "slugify": "^1.6.9",
     "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
