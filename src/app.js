@@ -5,11 +5,17 @@ import compression from "compression";
 import pinoHttp from "pino-http";
 import logger from "./config/logger.js";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import YAML from "yamljs";
+import { env } from "./config/env.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
+
+const swaggerDocument = YAML.load("./docs/openapi.yaml");
+
 app.use(cookieParser());
 app.use(
   cors({
@@ -49,6 +55,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // Compression
 app.use(compression());
+
+
+if (env.nodeEnv !== "production") {
+  app.use(
+    "/docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerDocument)
+  );
+}
 
 // Health check
 app.get("/health", (req, res) => {

@@ -1,0 +1,37 @@
+openapi: 3.0.3
+
+info:
+  title: Artistic Vicky API V3
+  description: API documentation for Artistic Vicky backend
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5000
+    description: Local server
+
+tags:
+  - name: Health
+    description: Server health APIs
+
+paths:
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Check server health
+
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Server is healthy
