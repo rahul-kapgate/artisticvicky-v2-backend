@@ -128,7 +128,14 @@ export const createAdminCourse = async ({ input, adminUserId }) => {
       client,
     );
 
-    const details = await createCourseDetails(course.id, client);
+    const details = await createCourseDetails(
+      course.id,
+      {
+        bannerPath: input.bannerPath,
+        bannerFileId: input.bannerFileId,
+      },
+      client,
+    );
 
     await client.query("COMMIT");
 
