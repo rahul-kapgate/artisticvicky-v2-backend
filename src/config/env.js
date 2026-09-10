@@ -7,7 +7,10 @@ const requiredEnv = [
   "RESEND_FROM_EMAIL",
   "OTP_HMAC_SECRET",
   "GOOGLE_WEB_CLIENT_ID",
-  "GOOGLE_CLIENT_SECRET"
+  "GOOGLE_CLIENT_SECRET",
+  "IMAGEKIT_PRIVATE_KEY",
+  "IMAGEKIT_PUBLIC_KEY",
+  "IMAGEKIT_URL_ENDPOINT",
 ];
 
 for (const key of requiredEnv) {
@@ -72,4 +75,13 @@ export const env = {
   refreshCookieSameSite: process.env.REFRESH_COOKIE_SAME_SITE || "lax",
 
   googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID,
+
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+
+  imagekitPrivateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+
+  imagekitPublicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+
+  imagekitUrlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+
 };

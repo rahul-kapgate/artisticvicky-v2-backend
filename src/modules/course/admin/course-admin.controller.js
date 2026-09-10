@@ -15,6 +15,8 @@ import {
   getAdminCourse,
 } from "./course-admin.service.js";
 
+import { env } from "../../../config/env.js";
+
 import { imagekit } from "../../../services/imagekit/imagekit.client.js";
 
 export const createCourse = async (req, res) => {
@@ -157,8 +159,8 @@ export const getCourseImageUploadAuth = async (req, res) => {
       expire,
       signature,
 
-      publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+      publicKey: env.imagekitPublicKey,
+      urlEndpoint: env.imagekitUrlEndpoint,
     },
   });
 };
