@@ -1,0 +1,127 @@
+patch:
+  tags:
+    - Admin Courses
+
+  summary: Update course details
+
+  description: |
+    Updates detailed course information stored in
+    the course_details table.
+
+  parameters:
+
+    - name: id
+      in: path
+      required: true
+
+      description: Course ID
+
+      schema:
+        type: string
+        format: uuid
+
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/course.yaml#/UpdateCourseDetailsRequest"
+
+        example:
+
+          subtitle: Complete preparation program
+
+          description: |
+            This course provides complete preparation
+            for the MAH AAC CET examination.
+
+          bannerPath: /courses/banners/aac-cet.jpg
+
+          bannerFileId: banner-file-123
+
+          category: Entrance Exam
+
+          level: Intermediate
+
+          language: English
+
+          whatYouWillLearn:
+            - Drawing fundamentals
+            - Perspective
+            - Design concepts
+            - Exam preparation
+
+          courseIncludes:
+            - Video lectures
+            - Study materials
+            - Practice tests
+
+          courseHighlights:
+            - Expert instructors
+            - Lifetime access
+            - Certificate
+
+          estimatedDurationMinutes: 1200
+
+          certificateAvailable: true
+
+          liveClassesAvailable: true
+
+          whatsappContact: "+919999999999"
+
+
+  responses:
+
+    "200":
+      description: Course details updated successfully
+
+      content:
+        application/json:
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+
+              message:
+                type: string
+                example: Course details updated successfully.
+
+              data:
+                type: object
+
+                properties:
+
+                  details:
+                    $ref: "../../components/schemas/course.yaml#/CourseDetails"
+
+
+    "400":
+      description: Validation failed
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "404":
+      description: Course details not found
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+
+    "403":
+      description: Admin permission required

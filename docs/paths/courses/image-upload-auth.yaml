@@ -1,0 +1,59 @@
+get:
+  tags:
+    - Admin Courses
+
+  summary: Get course image upload authentication
+
+  description: |
+    Returns ImageKit authentication parameters required
+    by the frontend to upload course images.
+
+  responses:
+
+    "200":
+      description: ImageKit authentication generated successfully
+
+      content:
+        application/json:
+
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+                example: true
+
+              data:
+                type: object
+
+                properties:
+
+                  token:
+                    type: string
+                    example: "imagekit-token"
+
+                  expire:
+                    type: integer
+                    example: 1778592000
+
+                  signature:
+                    type: string
+                    example: "imagekit-signature"
+
+                  publicKey:
+                    type: string
+                    example: "public_xxxxxxxxx"
+
+                  urlEndpoint:
+                    type: string
+                    example: "https://ik.imagekit.io/your_id"
+
+
+    "401":
+      description: Authentication required
+
+
+    "403":
+      description: Admin permission required

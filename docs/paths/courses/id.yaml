@@ -1,0 +1,157 @@
+get:
+  tags:
+    - Admin Courses
+
+  summary: Get course
+
+  description: |
+    Returns a course together with its course details
+    and creator information.
+
+  parameters:
+
+    - name: id
+      in: path
+      required: true
+
+      description: Course ID
+
+      schema:
+        type: string
+        format: uuid
+
+
+  responses:
+
+    "200":
+      description: Course retrieved successfully
+
+      content:
+        application/json:
+
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+                example: true
+
+              data:
+                type: object
+
+                properties:
+
+                  course:
+                    $ref: "../../components/schemas/course.yaml#/AdminCourse"
+
+
+    "404":
+      description: Course not found
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "403":
+      description: Admin permission required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+patch:
+  tags:
+    - Admin Courses
+
+  summary: Update course
+
+  description: |
+    Partially updates the basic course information.
+
+    This endpoint updates fields stored in the courses table.
+
+    Course metadata stored in course_details should be
+    updated using the /details endpoint.
+
+  parameters:
+
+    - name: id
+      in: path
+      required: true
+
+      description: Course ID
+
+      schema:
+        type: string
+        format: uuid
+
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/course.yaml#/UpdateCourseRequest"
+
+        example:
+
+          title: Updated MAH AAC CET Preparation
+
+          shortDescription: Updated course description.
+
+          visibility: public
+
+          priceAmount: 10999
+
+          salePriceAmount: 8999
+
+          currency: INR
+
+
+  responses:
+
+    "200":
+      description: Course updated successfully
+
+
+    "400":
+      description: Validation failed
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "404":
+      description: Course not found
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+
+    "403":
+      description: Admin permission required

@@ -1,0 +1,79 @@
+post:
+  tags:
+    - Admin Courses
+
+  summary: Publish course
+
+  description: |
+    Publishes a course after validating all required
+    information.
+
+    The course status changes from draft to published.
+
+  parameters:
+
+    - name: id
+      in: path
+      required: true
+
+      description: Course ID
+
+      schema:
+        type: string
+        format: uuid
+
+
+  responses:
+
+    "200":
+      description: Course published successfully
+
+      content:
+        application/json:
+
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+                example: true
+
+              message:
+                type: string
+                example: Course published successfully.
+
+              data:
+                type: object
+
+                properties:
+
+                  course:
+                    $ref: "../../components/schemas/course.yaml#/Course"
+
+
+    "400":
+      description: Course is not ready for publishing
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "404":
+      description: Course not found
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+
+    "403":
+      description: Admin permission required

@@ -1,0 +1,418 @@
+Course:
+  type: object
+
+  properties:
+    id:
+      type: string
+      format: uuid
+
+    title:
+      type: string
+      example: MAH AAC CET Complete Preparation
+
+    slug:
+      type: string
+      example: mah-aac-cet-complete-preparation
+
+    shortDescription:
+      type: string
+      nullable: true
+
+    thumbnailPath:
+      type: string
+      nullable: true
+
+    thumbnailFileId:
+      type: string
+      nullable: true
+
+    status:
+      type: string
+      enum:
+        - draft
+        - published
+        - archived
+
+    visibility:
+      type: string
+      enum:
+        - public
+        - unlisted
+
+    isFree:
+      type: boolean
+
+    priceAmount:
+      type: integer
+      minimum: 0
+
+    salePriceAmount:
+      type: integer
+      nullable: true
+
+    currency:
+      type: string
+      example: INR
+
+    accessType:
+      type: string
+      enum:
+        - lifetime
+        - duration
+        - fixed_date
+
+    accessDurationDays:
+      type: integer
+      nullable: true
+
+    accessEndAt:
+      type: string
+      format: date-time
+      nullable: true
+
+    createdBy:
+      type: string
+      format: uuid
+
+    publishedAt:
+      type: string
+      format: date-time
+      nullable: true
+
+    archivedAt:
+      type: string
+      format: date-time
+      nullable: true
+
+    createdAt:
+      type: string
+      format: date-time
+
+    updatedAt:
+      type: string
+      format: date-time
+
+CourseDetails:
+  type: object
+
+  properties:
+    id:
+      type: string
+      format: uuid
+
+    courseId:
+      type: string
+      format: uuid
+
+    subtitle:
+      type: string
+      nullable: true
+
+    description:
+      type: string
+      nullable: true
+
+    bannerPath:
+      type: string
+      nullable: true
+
+    bannerFileId:
+      type: string
+      nullable: true
+
+    category:
+      type: string
+      nullable: true
+
+    level:
+      type: string
+      nullable: true
+
+    language:
+      type: string
+      nullable: true
+
+    whatYouWillLearn:
+      type: array
+      items:
+        type: string
+
+    courseIncludes:
+      type: array
+      items:
+        type: string
+
+    courseHighlights:
+      type: array
+      items:
+        type: string
+
+    estimatedDurationMinutes:
+      type: integer
+      nullable: true
+
+    certificateAvailable:
+      type: boolean
+
+    liveClassesAvailable:
+      type: boolean
+
+    whatsappContact:
+      type: string
+      nullable: true
+
+    createdAt:
+      type: string
+      format: date-time
+
+    updatedAt:
+      type: string
+      format: date-time
+
+AdminCourse:
+  allOf:
+    - $ref: "#/Course"
+
+    - type: object
+
+      properties:
+        details:
+          $ref: "#/CourseDetails"
+
+        createdByName:
+          type: string
+
+        createdByEmail:
+          type: string
+          format: email
+
+CreateCourseRequest:
+  type: object
+
+  required:
+    - title
+    - isFree
+    - priceAmount
+    - accessType
+
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 180
+      example: MAH AAC CET Complete Preparation
+
+    shortDescription:
+      type: string
+      maxLength: 500
+      nullable: true
+
+    thumbnailPath:
+      type: string
+      nullable: true
+      example: /courses/thumbnails/course.jpg
+
+    thumbnailFileId:
+      type: string
+      nullable: true
+      example: thumbnail-file-123
+
+    bannerPath:
+      type: string
+      nullable: true
+      example: /courses/banners/course.jpg
+
+    bannerFileId:
+      type: string
+      nullable: true
+      example: banner-file-456
+
+    visibility:
+      type: string
+      enum:
+        - public
+        - unlisted
+      default: public
+
+    isFree:
+      type: boolean
+      example: false
+
+    priceAmount:
+      type: integer
+      minimum: 0
+      example: 9999
+
+    salePriceAmount:
+      type: integer
+      minimum: 1
+      nullable: true
+      example: 7999
+
+    currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      default: INR
+      example: INR
+
+    accessType:
+      type: string
+      enum:
+        - lifetime
+        - duration
+        - fixed_date
+
+    accessDurationDays:
+      type: integer
+      minimum: 1
+      nullable: true
+
+    accessEndAt:
+      type: string
+      format: date-time
+      nullable: true
+
+UpdateCourseRequest:
+  type: object
+
+  properties:
+    title:
+      type: string
+      minLength: 3
+      maxLength: 180
+
+    shortDescription:
+      type: string
+      maxLength: 500
+      nullable: true
+
+    thumbnailPath:
+      type: string
+      nullable: true
+
+    thumbnailFileId:
+      type: string
+      nullable: true
+
+    visibility:
+      type: string
+      enum:
+        - public
+        - unlisted
+
+    isFree:
+      type: boolean
+
+    priceAmount:
+      type: integer
+      minimum: 0
+
+    salePriceAmount:
+      type: integer
+      minimum: 1
+      nullable: true
+
+    currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+
+    accessType:
+      type: string
+      enum:
+        - lifetime
+        - duration
+        - fixed_date
+
+    accessDurationDays:
+      type: integer
+      minimum: 1
+      nullable: true
+
+    accessEndAt:
+      type: string
+      format: date-time
+      nullable: true
+
+UpdateCourseDetailsRequest:
+  type: object
+
+  properties:
+    subtitle:
+      type: string
+      nullable: true
+
+    description:
+      type: string
+      nullable: true
+
+    bannerPath:
+      type: string
+      nullable: true
+
+    bannerFileId:
+      type: string
+      nullable: true
+
+    category:
+      type: string
+      nullable: true
+
+    level:
+      type: string
+      nullable: true
+
+    language:
+      type: string
+      nullable: true
+
+    whatYouWillLearn:
+      type: array
+      items:
+        type: string
+
+    courseIncludes:
+      type: array
+      items:
+        type: string
+
+    courseHighlights:
+      type: array
+      items:
+        type: string
+
+    estimatedDurationMinutes:
+      type: integer
+      minimum: 1
+      nullable: true
+
+    certificateAvailable:
+      type: boolean
+
+    liveClassesAvailable:
+      type: boolean
+
+    whatsappContact:
+      type: string
+      nullable: true
+
+Pagination:
+  type: object
+
+  properties:
+    page:
+      type: integer
+      example: 1
+
+    limit:
+      type: integer
+      example: 20
+
+    total:
+      type: integer
+      example: 45
+
+    totalPages:
+      type: integer
+      example: 3

@@ -1,0 +1,265 @@
+post:
+  tags:
+    - Admin Courses
+
+  summary: Create a course
+
+  description: |
+    Creates a new course.
+
+    A course is created in draft status.
+
+    The API creates both the courses and course_details
+    records inside a single database transaction.
+
+    The course slug is generated automatically from the title.
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/course.yaml#/CreateCourseRequest"
+
+        examples:
+
+          paidLifetime:
+            summary: Paid course with lifetime access
+
+            value:
+              title: MAH AAC CET Complete Preparation
+              shortDescription: Complete entrance exam preparation course.
+              thumbnailPath: /courses/thumbnails/aac-cet.jpg
+              thumbnailFileId: thumbnail-file-123
+              bannerPath: /courses/banners/aac-cet-banner.jpg
+              bannerFileId: banner-file-456
+              visibility: public
+              isFree: false
+              priceAmount: 9999
+              salePriceAmount: 7999
+              currency: INR
+              accessType: lifetime
+
+          freeLifetime:
+            summary: Free course
+
+            value:
+              title: Introduction to Web Development
+              shortDescription: Learn modern web development fundamentals.
+              visibility: public
+              isFree: true
+              priceAmount: 0
+              currency: INR
+              accessType: lifetime
+
+          duration:
+            summary: Duration based access
+
+            value:
+              title: Full Stack Development Bootcamp
+              shortDescription: Learn React Node.js and PostgreSQL.
+              visibility: public
+              isFree: false
+              priceAmount: 14999
+              salePriceAmount: 11999
+              currency: INR
+              accessType: duration
+              accessDurationDays: 180
+
+          fixedDate:
+            summary: Fixed date access
+
+            value:
+              title: MAH AAC CET 2027 Preparation
+              shortDescription: Complete preparation for MAH AAC CET 2027.
+              visibility: public
+              isFree: false
+              priceAmount: 12000
+              salePriceAmount: 9999
+              currency: INR
+              accessType: fixed_date
+              accessEndAt: "2027-06-30T23:59:59+05:30"
+
+  responses:
+
+    "201":
+      description: Course created successfully
+
+      content:
+        application/json:
+
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+                example: true
+
+              message:
+                type: string
+                example: Course created successfully.
+
+              data:
+                type: object
+
+                properties:
+
+                  course:
+                    $ref: "../../components/schemas/course.yaml#/Course"
+
+                  details:
+                    $ref: "../../components/schemas/course.yaml#/CourseDetails"
+
+
+    "400":
+      description: Validation failed
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "403":
+      description: Admin permission required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+get:
+  tags:
+    - Admin Courses
+
+  summary: List courses
+
+  description: |
+    Returns a paginated list of courses.
+
+    Courses can be filtered by status and searched
+    using title or slug.
+
+  parameters:
+
+    - name: page
+      in: query
+      required: false
+
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+      example: 1
+
+
+    - name: limit
+      in: query
+      required: false
+
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+      example: 20
+
+
+    - name: status
+      in: query
+      required: false
+
+      schema:
+        type: string
+        enum:
+          - draft
+          - published
+          - archived
+
+      example: published
+
+
+    - name: search
+      in: query
+      required: false
+
+      schema:
+        type: string
+
+      example: React
+
+
+  responses:
+
+    "200":
+      description: Courses retrieved successfully
+
+      content:
+        application/json:
+
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+                example: true
+
+              data:
+                type: object
+
+                properties:
+
+                  courses:
+                    type: array
+
+                    items:
+                      $ref: "../../components/schemas/course.yaml#/Course"
+
+
+                  pagination:
+                    $ref: "../../components/schemas/course.yaml#/Pagination"
+
+
+    "400":
+      description: Invalid query parameters
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "403":
+      description: Admin permission required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"

@@ -1,0 +1,78 @@
+post:
+  tags:
+    - Admin Courses
+
+  summary: Archive course
+
+  description: |
+    Archives a published course.
+
+    Draft courses cannot be archived.
+
+  parameters:
+
+    - name: id
+      in: path
+      required: true
+
+      description: Course ID
+
+      schema:
+        type: string
+        format: uuid
+
+
+  responses:
+
+    "200":
+      description: Course archived successfully
+
+      content:
+        application/json:
+
+          schema:
+            type: object
+
+            properties:
+
+              success:
+                type: boolean
+                example: true
+
+              message:
+                type: string
+                example: Course archived successfully.
+
+              data:
+                type: object
+
+                properties:
+
+                  course:
+                    $ref: "../../components/schemas/course.yaml#/Course"
+
+
+    "404":
+      description: Course not found
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "409":
+      description: Draft course cannot be archived
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+
+    "401":
+      description: Authentication required
+
+
+    "403":
+      description: Admin permission required

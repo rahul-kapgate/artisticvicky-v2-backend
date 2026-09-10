@@ -16,8 +16,10 @@ tags:
   - name: Authentication
     description: Authentication APIs
 
-paths:
+  - name: Admin Courses
+    description: Admin course management APIs
 
+paths:
   /health:
     get:
       tags:
@@ -30,10 +32,12 @@ paths:
       responses:
         "200":
           description: Server is healthy
+
           content:
             application/json:
               schema:
                 type: object
+
                 properties:
                   success:
                     type: boolean
@@ -46,10 +50,26 @@ paths:
   /api/v1/auth/login:
     $ref: "./paths/auth/login.yaml"
 
+  /api/v1/admin/courses:
+    $ref: "./paths/courses/index.yaml"
+
+  /api/v1/admin/courses/{id}:
+    $ref: "./paths/courses/id.yaml"
+
+  /api/v1/admin/courses/{id}/details:
+    $ref: "./paths/courses/details.yaml"
+
+  /api/v1/admin/courses/{id}/publish:
+    $ref: "./paths/courses/publish.yaml"
+
+  /api/v1/admin/courses/{id}/archive:
+    $ref: "./paths/courses/archive.yaml"
+
+  /api/v1/admin/courses/image-upload-auth:
+    $ref: "./paths/courses/image-upload-auth.yaml"
+
 components:
-
   schemas:
-
     LoginRequest:
       $ref: "./components/schemas/auth.yaml#/LoginRequest"
 
@@ -58,6 +78,21 @@ components:
 
     User:
       $ref: "./components/schemas/user.yaml#/User"
+
+    Course:
+      $ref: "./components/schemas/course.yaml#/Course"
+
+    CourseDetails:
+      $ref: "./components/schemas/course.yaml#/CourseDetails"
+
+    CreateCourseRequest:
+      $ref: "./components/schemas/course.yaml#/CreateCourseRequest"
+
+    UpdateCourseRequest:
+      $ref: "./components/schemas/course.yaml#/UpdateCourseRequest"
+
+    UpdateCourseDetailsRequest:
+      $ref: "./components/schemas/course.yaml#/UpdateCourseDetailsRequest"
 
     ErrorResponse:
       $ref: "./components/schemas/common.yaml#/ErrorResponse"
