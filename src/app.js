@@ -63,12 +63,21 @@ app.use(express.urlencoded({ extended: true }));
 // Compression
 app.use(compression());
 
-
 if (env.nodeEnv !== "production") {
   app.use(
     "/docs",
     swaggerUi.serve,
-    swaggerUi.setup(swaggerDocument)
+    swaggerUi.setup(swaggerDocument, {
+      customSiteTitle: "Artistic Vicky API Docs",
+
+      swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        filter: true,
+        tryItOutEnabled: true,
+        withCredentials: true,
+      },
+    }),
   );
 }
 

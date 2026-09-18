@@ -1,0 +1,48 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Verify registration OTP
+
+  description: |
+    Verifies the registration OTP and creates the user account.
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/auth.yaml#/VerifyRegistrationRequest"
+
+        example:
+          verificationId: 550e8400-e29b-41d4-a716-446655440000
+          otp: "123456"
+
+  responses:
+
+    "201":
+      description: Registration completed successfully
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/VerifyRegistrationResponse"
+
+    "400":
+      description: Invalid OTP or verification request
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+    "409":
+      description: Account already exists
+
+    "410":
+      description: Registration or OTP expired
+
+    "429":
+      description: Maximum OTP attempts exceeded

@@ -1,3 +1,153 @@
+# ================================================================
+# REGISTRATION
+# ================================================================
+
+RegisterRequest:
+  type: object
+  required:
+    - name
+    - email
+    - password
+
+  properties:
+    name:
+      type: string
+      minLength: 2
+      maxLength: 100
+      example: Rahul Kapgate
+
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      example: rahul@example.com
+
+    mobile:
+      type: string
+      nullable: true
+      pattern: '^\+[1-9]\d{7,14}$'
+      example: "+919876543210"
+
+    password:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 128
+      example: Password@123
+
+RegisterResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: Verification code sent to your email.
+
+    data:
+      type: object
+
+      properties:
+        pendingUserId:
+          type: string
+          format: uuid
+
+        verificationId:
+          type: string
+          format: uuid
+
+        expiresIn:
+          type: integer
+          description: OTP expiry time in seconds
+          example: 600
+
+        resendAfter:
+          type: integer
+          description: Seconds before another OTP can be requested
+          example: 60
+
+VerifyRegistrationRequest:
+  type: object
+
+  required:
+    - verificationId
+    - otp
+
+  properties:
+    verificationId:
+      type: string
+      format: uuid
+
+    otp:
+      type: string
+      pattern: '^\d{6}$'
+      example: "123456"
+
+VerifyRegistrationResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: Registration completed successfully.
+
+    data:
+      type: object
+
+      properties:
+        user:
+          $ref: "./user.yaml#/User"
+
+ResendRegistrationRequest:
+  type: object
+
+  required:
+    - pendingUserId
+
+  properties:
+    pendingUserId:
+      type: string
+      format: uuid
+
+ResendRegistrationResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: A new verification code has been sent.
+
+    data:
+      type: object
+
+      properties:
+        verificationId:
+          type: string
+          format: uuid
+
+        expiresIn:
+          type: integer
+          example: 600
+
+        resendAfter:
+          type: integer
+          example: 60
+
+# ================================================================
+# LOGIN
+# ================================================================
+
 LoginRequest:
   type: object
 
@@ -40,6 +190,32 @@ LoginRequest:
         - ios
       example: web
 
+AuthSessionData:
+  type: object
+
+  properties:
+    user:
+      $ref: "./user.yaml#/User"
+
+    accessToken:
+      type: string
+      description: JWT access token
+
+    accessTokenExpiresIn:
+      type: integer
+      description: Access token expiry in seconds
+      example: 900
+
+    sessionExpiresAt:
+      type: string
+      format: date-time
+
+    refreshToken:
+      type: string
+      nullable: true
+      description: |
+        Returned only for Android and iOS.
+        Web clients receive the refresh token as an HttpOnly cookie.
 
 LoginResponse:
   type: object
@@ -54,19 +230,42 @@ LoginResponse:
       example: Login successful.
 
     data:
+      $ref: "#/AuthSessionData"
+
+# ================================================================
+# REFRESH TOKEN
+# ================================================================
+
+RefreshTokenRequest:
+  type: object
+
+  properties:
+    refreshToken:
+      type: string
+      description: |
+        Required for Android and iOS clients.
+
+        Web clients do not need to send this value because
+        the refresh token is read from the HttpOnly cookie.
+
+RefreshTokenResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    data:
       type: object
 
       properties:
-        user:
-          $ref: "./user.yaml#/User"
-
         accessToken:
           type: string
-          description: JWT access token
 
         accessTokenExpiresIn:
           type: integer
-          example: 15
+          example: 900
 
         sessionExpiresAt:
           type: string
@@ -74,5 +273,158 @@ LoginResponse:
 
         refreshToken:
           type: string
-          nullable: true
-          description: Returned only for Android and iOS clients.
+          description: Returned for Android and iOS clients only.
+
+# ================================================================
+# GOOGLE AUTH
+# ================================================================
+
+GoogleAuthRequest:
+  type: object
+
+  required:
+    - idToken
+    - deviceId
+    - platform
+
+  properties:
+    idToken:
+      type: string
+      description: Google ID token received from Google Sign-In
+      example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+
+    deviceId:
+      type: string
+      format: uuid
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+    deviceName:
+      type: string
+      nullable: true
+      maxLength: 150
+      example: Chrome
+
+    platform:
+      type: string
+      enum:
+        - web
+        - android
+        - ios
+      example: web
+
+GoogleAuthResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: Google authentication successful.
+
+    data:
+      $ref: "#/AuthSessionData"
+
+# ================================================================
+# FORGOT PASSWORD
+# ================================================================
+
+ForgotPasswordRequest:
+  type: object
+
+  required:
+    - email
+
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      example: user@example.com
+
+ForgotPasswordVerifyRequest:
+  type: object
+
+  required:
+    - email
+    - otp
+
+  properties:
+    email:
+      type: string
+      format: email
+      example: user@example.com
+
+    otp:
+      type: string
+      pattern: '^\d{6}$'
+      example: "123456"
+
+ForgotPasswordVerifyResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: Verification successful.
+
+    data:
+      type: object
+
+      properties:
+        resetToken:
+          type: string
+          description: Short-lived password reset token
+
+        expiresIn:
+          type: integer
+          description: Reset token expiry in seconds
+          example: 600
+
+        resetSessionId:
+          type: string
+          format: uuid
+
+ResetPasswordRequest:
+  type: object
+
+  required:
+    - resetToken
+    - newPassword
+    - confirmPassword
+
+  properties:
+    resetToken:
+      type: string
+      minLength: 40
+      maxLength: 128
+
+    newPassword:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 128
+      example: NewPassword@123
+
+    confirmPassword:
+      type: string
+      format: password
+      example: NewPassword@123
+
+MessageResponse:
+  type: object
+
+  properties:
+    success:
+      type: boolean
+      example: true
+
+    message:
+      type: string
+      example: Operation completed successfully.

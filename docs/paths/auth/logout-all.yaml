@@ -1,0 +1,34 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Logout from all devices
+
+  description: |
+    Revokes all active sessions belonging to the authenticated user.
+
+  security:
+    - bearerAuth: []
+
+  responses:
+
+    "200":
+      description: All sessions revoked
+
+      content:
+        application/json:
+
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/MessageResponse"
+
+          example:
+            success: true
+            message: Logged out from all devices.
+
+    "401":
+      description: Authentication required
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"

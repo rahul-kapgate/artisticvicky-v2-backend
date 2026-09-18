@@ -1,0 +1,49 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Authenticate with Google
+
+  security: []
+
+  description: |
+    Authenticates or creates a user using a Google ID token.
+
+    Web clients receive the refresh token through an HttpOnly cookie.
+
+    Android and iOS clients receive the refresh token
+    in the response body.
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/auth.yaml#/GoogleAuthRequest"
+
+        example:
+          idToken: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+          deviceId: 550e8400-e29b-41d4-a716-446655440000
+          deviceName: Chrome
+          platform: web
+
+  responses:
+
+    "200":
+      description: Google authentication successful
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/GoogleAuthResponse"
+
+    "400":
+      description: Invalid request
+
+    "401":
+      description: Invalid Google ID token
+
+    "429":
+      description: Too many authentication attempts

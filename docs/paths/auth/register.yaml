@@ -1,0 +1,53 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Register user
+
+  description: |
+    Starts user registration.
+
+    A 6-digit OTP is sent to the user's email.
+    Registration is not completed until the OTP is verified.
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/auth.yaml#/RegisterRequest"
+
+        example:
+          name: Rahul Kapgate
+          email: rahul@example.com
+          mobile: "+919876543210"
+          password: Password@123
+
+  responses:
+
+    "202":
+      description: Verification OTP sent
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/RegisterResponse"
+
+    "400":
+      description: Invalid request
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
+
+    "409":
+      description: Email or mobile already registered
+
+    "429":
+      description: Too many registration or OTP requests
+
+    "503":
+      description: Verification email could not be sent

@@ -2,7 +2,18 @@ openapi: 3.0.3
 
 info:
   title: Artistic Vicky API V3
-  description: API documentation for the Artistic Vicky platform
+  description: |
+    REST API documentation for the Artistic Vicky platform.
+
+    Authentication uses JWT access tokens.
+
+    Protected endpoints require:
+
+    Authorization: Bearer <access_token>
+
+    Web clients receive the refresh token through an HttpOnly cookie.
+    Android and iOS clients receive the refresh token in the response body.
+
   version: 1.0.0
 
 servers:
@@ -14,7 +25,7 @@ tags:
     description: Server health APIs
 
   - name: Authentication
-    description: Authentication APIs
+    description: User registration, login, session and password management
 
   - name: Admin Courses
     description: Admin course management APIs
@@ -27,17 +38,13 @@ paths:
 
       summary: Check server health
 
-      description: Returns the current health status of the API server.
-
       responses:
         "200":
           description: Server is healthy
-
           content:
             application/json:
               schema:
                 type: object
-
                 properties:
                   success:
                     type: boolean
@@ -47,8 +54,46 @@ paths:
                     type: string
                     example: Server is healthy
 
+  # ----------------------------------------------------------------
+  # AUTHENTICATION
+  # ----------------------------------------------------------------
+
+  /api/v1/auth/register:
+    $ref: "./paths/auth/register.yaml"
+
+  /api/v1/auth/register/verify:
+    $ref: "./paths/auth/register-verify.yaml"
+
+  /api/v1/auth/register/resend:
+    $ref: "./paths/auth/register-resend.yaml"
+
   /api/v1/auth/login:
     $ref: "./paths/auth/login.yaml"
+
+  /api/v1/auth/refresh:
+    $ref: "./paths/auth/refresh.yaml"
+
+  /api/v1/auth/logout:
+    $ref: "./paths/auth/logout.yaml"
+
+  /api/v1/auth/logout/all:
+    $ref: "./paths/auth/logout-all.yaml"
+
+  /api/v1/auth/google:
+    $ref: "./paths/auth/google.yaml"
+
+  /api/v1/auth/forgot-password/request:
+    $ref: "./paths/auth/forgot-password-request.yaml"
+
+  /api/v1/auth/forgot-password/verify:
+    $ref: "./paths/auth/forgot-password-verify.yaml"
+
+  /api/v1/auth/forgot-password/reset:
+    $ref: "./paths/auth/forgot-password-reset.yaml"
+
+  # ----------------------------------------------------------------
+  # ADMIN COURSES
+  # ----------------------------------------------------------------
 
   /api/v1/admin/courses:
     $ref: "./paths/courses/index.yaml"
@@ -69,15 +114,33 @@ paths:
     $ref: "./paths/courses/image-upload-auth.yaml"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Enter the JWT access token returned by the login endpoint.
+
+        Example:
+        eyJhbGciOiJIUzI1NiIs...
+
+        Swagger automatically adds:
+
+        Authorization: Bearer <token>
+
   schemas:
+    User:
+      $ref: "./components/schemas/user.yaml#/User"
+
+    ErrorResponse:
+      $ref: "./components/schemas/common.yaml#/ErrorResponse"
+
     LoginRequest:
       $ref: "./components/schemas/auth.yaml#/LoginRequest"
 
     LoginResponse:
       $ref: "./components/schemas/auth.yaml#/LoginResponse"
-
-    User:
-      $ref: "./components/schemas/user.yaml#/User"
 
     Course:
       $ref: "./components/schemas/course.yaml#/Course"
@@ -93,6 +156,3 @@ components:
 
     UpdateCourseDetailsRequest:
       $ref: "./components/schemas/course.yaml#/UpdateCourseDetailsRequest"
-
-    ErrorResponse:
-      $ref: "./components/schemas/common.yaml#/ErrorResponse"

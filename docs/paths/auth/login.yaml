@@ -4,6 +4,8 @@ post:
 
   summary: Login user
 
+  security: []
+
   description: |
     Authenticates a user using email and password.
 

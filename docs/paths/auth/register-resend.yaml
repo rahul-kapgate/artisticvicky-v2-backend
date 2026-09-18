@@ -1,0 +1,42 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Resend registration OTP
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+
+        schema:
+          $ref: "../../components/schemas/auth.yaml#/ResendRegistrationRequest"
+
+        example:
+          pendingUserId: 550e8400-e29b-41d4-a716-446655440000
+
+  responses:
+
+    "200":
+      description: New verification OTP sent
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/ResendRegistrationResponse"
+
+    "400":
+      description: Invalid request
+
+    "404":
+      description: Registration session not found
+
+    "410":
+      description: Registration session expired
+
+    "429":
+      description: OTP resend cooldown active
+
+    "503":
+      description: Verification email could not be sent

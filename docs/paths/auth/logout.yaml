@@ -1,0 +1,34 @@
+post:
+  tags:
+    - Authentication
+
+  summary: Logout current device
+
+  description: |
+    Revokes the current authenticated session.
+
+  security:
+    - bearerAuth: []
+
+  responses:
+
+    "200":
+      description: Logged out successfully
+
+      content:
+        application/json:
+
+          schema:
+            $ref: "../../components/schemas/auth.yaml#/MessageResponse"
+
+          example:
+            success: true
+            message: Logged out successfully.
+
+    "401":
+      description: Authentication required or session expired
+
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/common.yaml#/ErrorResponse"
