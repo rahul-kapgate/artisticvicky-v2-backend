@@ -1,11 +1,6 @@
-import {
-  pool,
-} from "../../../config/database.js";
+import { pool } from "../../../config/database.js";
 
-export const findUserByEmail = async (
-  email,
-  db = pool
-) => {
+export const findUserByEmail = async (email, db = pool) => {
   const result = await db.query(
     `
       SELECT
@@ -24,19 +19,13 @@ export const findUserByEmail = async (
 
       LIMIT 1
     `,
-    [email]
+    [email],
   );
 
   return result.rows[0] ?? null;
 };
 
-export const revokeSameDeviceSession = async (
-  {
-    userId,
-    deviceId,
-  },
-  client
-) => {
+export const revokeSameDeviceSession = async ({ userId, deviceId }, client) => {
   await client.query(
     `
       UPDATE public.user_sessions
@@ -50,10 +39,7 @@ export const revokeSameDeviceSession = async (
         AND device_id = $2
         AND revoked_at IS NULL
     `,
-    [
-      userId,
-      deviceId,
-    ]
+    [userId, deviceId],
   );
 };
 
@@ -68,7 +54,7 @@ export const createSession = async (
     ipAddress,
     userAgent,
   },
-  client
+  client,
 ) => {
   const result = await client.query(
     `
@@ -120,7 +106,7 @@ export const createSession = async (
 
       ipAddress ?? null,
       userAgent ?? null,
-    ]
+    ],
   );
 
   return result.rows[0];
