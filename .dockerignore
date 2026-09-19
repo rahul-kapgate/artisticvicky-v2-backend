@@ -1,0 +1,25 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY . .
+
+ENV NODE_ENV=production
+
+EXPOSE 5000
+
+CMD ["npm", "start"]
+root@rahul:/var/www/artisticvicky-v2-backend# cat .dockerignore
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+tests
+coverage
+README.md
