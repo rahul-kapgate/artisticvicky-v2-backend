@@ -4,6 +4,9 @@ get:
 
   summary: Get course
 
+  security:
+    - bearerAuth: []
+
   description: |
     Returns a course together with its course details
     and creator information.
@@ -79,6 +82,9 @@ patch:
     - Admin Courses
 
   summary: Update course
+
+  security:
+    - bearerAuth: []
 
   description: |
     Partially updates the basic course information.

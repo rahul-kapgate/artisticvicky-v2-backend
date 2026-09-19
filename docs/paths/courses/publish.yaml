@@ -4,6 +4,9 @@ post:
 
   summary: Publish course
 
+  security:
+    - bearerAuth: []
+
   description: |
     Publishes a course after validating all required
     information.

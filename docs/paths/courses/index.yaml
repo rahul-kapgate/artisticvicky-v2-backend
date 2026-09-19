@@ -4,6 +4,9 @@ post:
 
   summary: Create a course
 
+  security:
+    - bearerAuth: []
+
   description: |
     Creates a new course.
 
@@ -147,6 +150,9 @@ get:
     - Admin Courses
 
   summary: List courses
+
+  security:
+    - bearerAuth: []
 
   description: |
     Returns a paginated list of courses.

@@ -4,6 +4,9 @@ get:
 
   summary: Get course image upload authentication
 
+  security:
+    - bearerAuth: []
+
   description: |
     Returns ImageKit authentication parameters required
     by the frontend to upload course images.

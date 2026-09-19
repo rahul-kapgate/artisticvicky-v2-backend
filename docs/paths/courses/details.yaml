@@ -4,6 +4,9 @@ patch:
 
   summary: Update course details
 
+  security:
+    - bearerAuth: []
+
   description: |
     Updates detailed course information stored in
     the course_details table.

@@ -76,6 +76,23 @@ if (env.nodeEnv !== "production") {
         filter: true,
         tryItOutEnabled: true,
         withCredentials: true,
+
+        responseInterceptor: (response) => {
+          if (
+            response.url?.includes("/api/v1/auth/login") &&
+            response.status >= 200 &&
+            response.status < 300
+          ) {
+            const token =
+              response.obj?.data?.accessToken || response.obj?.accessToken;
+
+            if (token && window.ui) {
+              window.ui.preauthorizeApiKey("bearerAuth", token);
+            }
+          }
+
+          return response;
+        },
       },
     }),
   );

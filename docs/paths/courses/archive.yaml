@@ -4,6 +4,9 @@ post:
 
   summary: Archive course
 
+  security:
+    - bearerAuth: []
+
   description: |
     Archives a published course.
 
