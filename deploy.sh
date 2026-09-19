@@ -11,8 +11,9 @@ echo "======================================"
 echo " Deploying Artistic Vicky Backend"
 echo "======================================"
 
-echo "1. Pulling latest v3 code..."
-git pull origin v3
+echo "1. Syncing latest v3 code..."
+git fetch origin v3
+git reset --hard origin/v3
 
 echo "2. Building Docker image..."
 docker build -t "$IMAGE_NAME" .
