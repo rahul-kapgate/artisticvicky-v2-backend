@@ -1,0 +1,140 @@
+get:
+  tags:
+    - Public Courses
+
+  summary: Get public course details
+
+  description: |
+    Returns complete public information for a single course.
+
+    This endpoint is used when a user clicks a course on the
+    landing page and opens the course details page.
+
+    The course is identified using its slug.
+
+    Only courses with:
+
+    - `status = published`
+    - `visibility = public`
+
+    can be returned.
+
+    Authentication is not required.
+
+  operationId: getPublicCourseBySlug
+
+  parameters:
+    - name: slug
+      in: path
+      required: true
+
+      description: Unique public slug of the course.
+
+      schema:
+        type: string
+        pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+
+      example: "mah-aac-cet-complete-preparation"
+
+  responses:
+    "200":
+      description: Course details fetched successfully.
+
+      content:
+        application/json:
+          schema:
+            type: object
+
+            required:
+              - success
+              - data
+
+            properties:
+              success:
+                type: boolean
+                example: true
+
+              data:
+                $ref: "../../components/schemas/course-public.yaml#/PublicCourseDetails"
+
+          example:
+            success: true
+
+            data:
+              id: "aaf1a4a7-8531-41e0-a27e-f5850f781234"
+
+              title: "MAH AAC CET Complete Preparation"
+
+              slug: "mah-aac-cet-complete-preparation"
+
+              subtitle: "Complete Entrance Exam Preparation"
+
+              shortDescription: "Prepare for MAH AAC CET with structured learning."
+
+              description: "Complete preparation program covering all major sections of the examination."
+
+              media:
+                thumbnailPath: "/courses/thumbnails/aac-cet.jpg"
+                bannerPath: "/courses/banners/aac-cet-banner.jpg"
+
+              category: "Entrance Exam"
+
+              level: "Beginner"
+
+              language: "English"
+
+              estimatedDurationMinutes: 7200
+
+              pricing:
+                isFree: false
+                priceAmount: 9999
+                salePriceAmount: 5999
+                currency: "INR"
+
+              access:
+                type: "lifetime"
+                durationDays: null
+                endAt: null
+
+              whatYouWillLearn:
+                - "Object Drawing"
+                - "2D Design"
+                - "Memory Drawing"
+                - "General Knowledge"
+
+              courseIncludes:
+                - "Recorded Lectures"
+                - "Live Classes"
+                - "Mock Tests"
+                - "Study Material"
+
+              courseHighlights:
+                - "Exam-focused preparation"
+                - "Expert faculty"
+                - "Regular mock tests"
+
+              certificateAvailable: true
+
+              liveClassesAvailable: true
+
+              whatsappContact: "+919876543210"
+
+              publishedAt: "2026-09-19T10:30:00.000Z"
+
+    "404":
+      description: Course not found.
+
+      content:
+        application/json:
+          example:
+            success: false
+            message: "Course not found"
+
+    "500":
+      description: Internal server error.
+
+      content:
+        application/json:
+          example:
+            success: false
+            message: "Internal server error"

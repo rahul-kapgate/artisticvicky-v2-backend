@@ -1,0 +1,237 @@
+PublicCourseCard:
+  type: object
+  required:
+    - id
+    - title
+    - slug
+    - pricing
+    - courseIncludes
+
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: "aaf1a4a7-8531-41e0-a27e-f5850f781234"
+
+    title:
+      type: string
+      example: "MAH AAC CET Complete Preparation"
+
+    slug:
+      type: string
+      example: "mah-aac-cet-complete-preparation"
+
+    shortDescription:
+      type: string
+      nullable: true
+      example: "Complete preparation for MAH AAC CET."
+
+    thumbnailPath:
+      type: string
+      nullable: true
+      example: "/courses/thumbnails/aac-cet.jpg"
+
+    estimatedDurationMinutes:
+      type: integer
+      nullable: true
+      minimum: 0
+      example: 7200
+
+    pricing:
+      $ref: "#/CoursePricing"
+
+    courseIncludes:
+      type: array
+      items:
+        type: string
+      example:
+        - "Recorded Lectures"
+        - "Live Classes"
+        - "Mock Tests"
+        - "Study Material"
+
+PublicCourseDetails:
+  type: object
+
+  required:
+    - id
+    - title
+    - slug
+    - pricing
+    - access
+    - whatYouWillLearn
+    - courseIncludes
+    - courseHighlights
+
+  properties:
+    id:
+      type: string
+      format: uuid
+      example: "aaf1a4a7-8531-41e0-a27e-f5850f781234"
+
+    title:
+      type: string
+      example: "MAH AAC CET Complete Preparation"
+
+    slug:
+      type: string
+      example: "mah-aac-cet-complete-preparation"
+
+    subtitle:
+      type: string
+      nullable: true
+      example: "Complete Entrance Exam Preparation"
+
+    shortDescription:
+      type: string
+      nullable: true
+      example: "Prepare for MAH AAC CET with structured learning."
+
+    description:
+      type: string
+      nullable: true
+      example: "Complete preparation program covering all major sections of the examination."
+
+    media:
+      type: object
+
+      properties:
+        thumbnailPath:
+          type: string
+          nullable: true
+          example: "/courses/thumbnails/aac-cet.jpg"
+
+        bannerPath:
+          type: string
+          nullable: true
+          example: "/courses/banners/aac-cet-banner.jpg"
+
+    category:
+      type: string
+      nullable: true
+      example: "Entrance Exam"
+
+    level:
+      type: string
+      nullable: true
+      example: "Beginner"
+
+    language:
+      type: string
+      nullable: true
+      example: "English"
+
+    estimatedDurationMinutes:
+      type: integer
+      nullable: true
+      minimum: 0
+      example: 7200
+
+    pricing:
+      $ref: "#/CoursePricing"
+
+    access:
+      $ref: "#/CourseAccess"
+
+    whatYouWillLearn:
+      type: array
+      items:
+        type: string
+      example:
+        - "Object Drawing"
+        - "2D Design"
+        - "Memory Drawing"
+        - "General Knowledge"
+
+    courseIncludes:
+      type: array
+      items:
+        type: string
+      example:
+        - "Recorded Lectures"
+        - "Live Classes"
+        - "Mock Tests"
+        - "Study Material"
+
+    courseHighlights:
+      type: array
+      items:
+        type: string
+      example:
+        - "Exam-focused preparation"
+        - "Expert faculty"
+        - "Regular mock tests"
+
+    certificateAvailable:
+      type: boolean
+      example: true
+
+    liveClassesAvailable:
+      type: boolean
+      example: true
+
+    whatsappContact:
+      type: string
+      nullable: true
+      example: "+919876543210"
+
+    publishedAt:
+      type: string
+      format: date-time
+      nullable: true
+      example: "2026-09-19T10:30:00.000Z"
+
+CoursePricing:
+  type: object
+  required:
+    - isFree
+    - priceAmount
+    - currency
+
+  properties:
+    isFree:
+      type: boolean
+      example: false
+
+    priceAmount:
+      type: integer
+      minimum: 0
+      example: 9999
+
+    salePriceAmount:
+      type: integer
+      nullable: true
+      minimum: 0
+      example: 5999
+
+    currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      example: "INR"
+
+CourseAccess:
+  type: object
+  required:
+    - type
+
+  properties:
+    type:
+      type: string
+      enum:
+        - lifetime
+        - duration
+        - fixed_date
+      example: "lifetime"
+
+    durationDays:
+      type: integer
+      nullable: true
+      minimum: 1
+      example: null
+
+    endAt:
+      type: string
+      format: date-time
+      nullable: true
+      example: null

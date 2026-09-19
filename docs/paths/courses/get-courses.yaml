@@ -1,0 +1,83 @@
+get:
+  tags:
+    - Public Courses
+
+  summary: Get public courses
+
+  description: |
+    Returns courses available for display on the public website.
+
+    This endpoint is mainly used on the landing page to display
+    course cards.
+
+    Only courses with:
+
+    - `status = published`
+    - `visibility = public`
+
+    are returned.
+
+    Authentication is not required.
+
+  operationId: getPublicCourses
+
+  responses:
+    "200":
+      description: Public courses fetched successfully.
+
+      content:
+        application/json:
+          schema:
+            type: object
+
+            required:
+              - success
+              - data
+
+            properties:
+              success:
+                type: boolean
+                example: true
+
+              data:
+                type: array
+
+                items:
+                  $ref: "../../components/schemas/course-public.yaml#/PublicCourseCard"
+
+          example:
+            success: true
+
+            data:
+              - id: "aaf1a4a7-8531-41e0-a27e-f5850f781234"
+
+                title: "MAH AAC CET Complete Preparation"
+
+                slug: "mah-aac-cet-complete-preparation"
+
+                shortDescription: "Complete preparation for MAH AAC CET."
+
+                thumbnailPath: "/courses/thumbnails/aac-cet.jpg"
+
+                estimatedDurationMinutes: 7200
+
+                pricing:
+                  isFree: false
+                  priceAmount: 9999
+                  salePriceAmount: 5999
+                  currency: "INR"
+
+                courseIncludes:
+                  - "Recorded Lectures"
+                  - "Live Classes"
+                  - "Mock Tests"
+                  - "Study Material"
+
+    "500":
+      description: Internal server error.
+
+      content:
+        application/json:
+          example:
+            success: false
+            message: "Internal server error"

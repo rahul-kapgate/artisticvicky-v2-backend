@@ -30,6 +30,9 @@ tags:
   - name: Admin Courses
     description: Admin course management APIs
 
+  - name: Public Courses
+    description: Public APIs used to display courses on the website.
+
 paths:
   /health:
     get:
@@ -113,6 +116,16 @@ paths:
   /api/v1/admin/courses/image-upload-auth:
     $ref: "./paths/courses/image-upload-auth.yaml"
 
+  # ----------------------------------------------------------------
+  # PUBLIC COURSES
+  # ----------------------------------------------------------------
+
+  /api/v1/courses:
+    $ref: "./paths/courses/get-courses.yaml"
+
+  /api/v1/courses/{slug}:
+    $ref: "./paths/courses/get-course.yaml"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -156,3 +169,9 @@ components:
 
     UpdateCourseDetailsRequest:
       $ref: "./components/schemas/course.yaml#/UpdateCourseDetailsRequest"
+
+    PublicCourseCard:
+      $ref: "./components/schemas/course-public.yaml#/PublicCourseCard"
+
+    PublicCourseDetails:
+      $ref: "./components/schemas/course-public.yaml#/PublicCourseDetails"
