@@ -1,11 +1,11 @@
+import AppError from "../../../utils/AppError.js";
+
 import {
   findPublicCourses,
   findPublicCourseBySlug,
 } from "./course.repository.js";
 
-import { AppError } from "../../../utils/AppError.js";
-
-export const getPublicCourses = async () => {
+export const getCourses = async () => {
   const courses = await findPublicCourses();
 
   return courses.map((course) => ({
@@ -40,11 +40,11 @@ export const getPublicCourses = async () => {
   }));
 };
 
-export const getPublicCourseBySlug = async (slug) => {
+export const getCourseBySlug = async (slug) => {
   const course = await findPublicCourseBySlug(slug);
 
   if (!course) {
-    throw new AppError("Course not found", 404, "COURSE_NOT_FOUND");
+    throw new AppError("Course not found", 404);
   }
 
   return {
@@ -62,7 +62,6 @@ export const getPublicCourseBySlug = async (slug) => {
 
     media: {
       thumbnailPath: course.thumbnail_path,
-
       bannerPath: course.banner_path,
     },
 

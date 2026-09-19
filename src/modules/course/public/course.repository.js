@@ -1,11 +1,5 @@
 import { pool } from "../../../config/database.js";
 
-/**
- * Landing page courses
- *
- * Returns only published + public courses.
- * Only fields required by course cards are selected.
- */
 export const findPublicCourses = async () => {
   const query = `
     SELECT
@@ -33,7 +27,7 @@ export const findPublicCourses = async () => {
       AND c.visibility = 'public'
 
     ORDER BY
-      c.published_at DESC,
+      c.published_at DESC NULLS LAST,
       c.created_at DESC
   `;
 
@@ -42,12 +36,6 @@ export const findPublicCourses = async () => {
   return result.rows;
 };
 
-/**
- * Single public course
- *
- * Returns complete information required by the
- * public course details page.
- */
 export const findPublicCourseBySlug = async (slug) => {
   const query = `
     SELECT
@@ -65,7 +53,6 @@ export const findPublicCourseBySlug = async (slug) => {
       c.access_type,
       c.access_duration_days,
       c.access_end_at,
-
       c.published_at,
 
       cd.subtitle,
