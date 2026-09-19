@@ -13,7 +13,7 @@ import { env } from "./config/env.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
-
+import courseRoute from "./routes/course.route.js";
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,7 +109,7 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/admin", adminRoutes);
-
+app.use("/api/v1/courses", courseRoute);
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
