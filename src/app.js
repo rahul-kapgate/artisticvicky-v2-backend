@@ -26,6 +26,8 @@ import liveTestRoutes from "./routes/liveTestRoutes.js";
 import courseReviewRoutes from "./routes/courseReviewRoutes.js";
 import reportRoutes from "./routes/report.routes.js";
 import faqRoutes from "./routes/faq.routes.js";
+import accountDeletionRoutes from "./routes/accountDeletion.routes.js";
+import internalRoutes from "./routes/internal.routes.js";
 // import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -62,6 +64,8 @@ app.use("/api/live-test", liveTestRoutes);
 app.use("/api/course-reviews", courseReviewRoutes);
 app.use("/api/report", reportRoutes);
 app.use("/api/faqs", faqRoutes);
+app.use("/api/account", accountDeletionRoutes);
+app.use("/api/internal", internalRoutes);
 
 // 🧱 Error Handler
 // app.use(errorHandler);
