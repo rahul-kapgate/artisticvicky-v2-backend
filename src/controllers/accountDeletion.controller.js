@@ -427,7 +427,9 @@ export async function verifyDeleteAccountOtp(req, res) {
 
     const now = new Date();
 
-    const deletionScheduledAt = new Date(now.getTime() + 1 * 60 * 1000);
+    const deletionScheduledAt = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000,
+    );
 
     // -------------------------------------------------
     // 8. Mark account pending deletion
