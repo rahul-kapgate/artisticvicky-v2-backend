@@ -3,7 +3,6 @@ import crypto from "crypto";
 
 import { supabase } from "../config/supabaseClient.js";
 
-
 import {
   sendDeleteAccountOtpEmail,
   sendDeletionScheduledEmail,
@@ -539,54 +538,36 @@ export async function verifyDeleteAccountOtp(req, res) {
   }
 }
 
-
-export const runAccountDeletionCron = async (
-  req,
-  res,
-) => {
+export const runAccountDeletionCron = async (req, res) => {
   try {
-    if (
-      req.headers["x-cron-secret"] !==
-      process.env.CRON_SECRET
-    ) {
+    if (req.headers["x-cron-secret"] !== process.env.CRON_SECRET) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized",
+        message: "Unauthorized nop",
       });
     }
 
-    console.log(
-      "[AccountDeletionCron] Started:",
-      new Date().toISOString(),
-    );
+    console.log("[AccountDeletionCron] Started:", new Date().toISOString());
 
-    const result =
-      await processDueAccountDeletions();
+    const result = await processDueAccountDeletions();
 
-    console.log(
-      "[AccountDeletionCron] Completed:",
-      result,
-    );
+    console.log("[AccountDeletionCron] Completed:", result);
 
     return res.status(200).json({
       success: true,
-      message:
-        "Account deletion processing completed.",
+
+      message: "Account deletion processing completed.",
 
       found: result.found,
       deleted: result.deleted,
       failed: result.failed,
     });
   } catch (error) {
-    console.error(
-      "[AccountDeletionCron] Error:",
-      error,
-    );
+    console.error("[AccountDeletionCron] Error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Account deletion processing failed.",
+      message: "Account deletion processing failed.",
     });
   }
 };

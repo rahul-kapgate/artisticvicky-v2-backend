@@ -2,16 +2,19 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-import { processDueAccountDeletions } from "../services/accountDeletionScheduler.service.js";
-
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL || "AV Art Academy <noreply@artisticvickey.in>";
+
+/* =========================================================
+   DELETE ACCOUNT OTP EMAIL
+========================================================= */
 
 export async function sendDeleteAccountOtpEmail({ email, name, otp }) {
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: email,
     subject: "Confirm your AV Art Academy account deletion",
+
     html: `
       <div
         style="
@@ -48,20 +51,25 @@ export async function sendDeleteAccountOtpEmail({ email, name, otp }) {
         </div>
 
         <p>
-          This code will expire in <strong>10 minutes</strong>.
+          This code will expire in
+          <strong>10 minutes</strong>.
         </p>
 
         <p>
-          After successful verification, your account will be scheduled
-          for permanent deletion after <strong>30 days</strong>.
+          After successful verification,
+          your account will be scheduled for
+          permanent deletion after
+          <strong>30 days</strong>.
         </p>
 
         <p>
-          During those 30 days, you'll be able to reactivate your account.
+          During those 30 days,
+          you can reactivate your account.
         </p>
 
         <p>
-          If you did not request this, you can safely ignore this email.
+          If you did not request this,
+          you can safely ignore this email.
         </p>
 
         <br />
@@ -74,11 +82,17 @@ export async function sendDeleteAccountOtpEmail({ email, name, otp }) {
   });
 
   if (error) {
+    console.error("[Email] Delete OTP email error:", error);
+
     throw new Error(error.message || "Failed to send account deletion OTP");
   }
 
   return data;
 }
+
+/* =========================================================
+   DELETION SCHEDULED EMAIL
+========================================================= */
 
 export async function sendDeletionScheduledEmail({
   email,
@@ -95,7 +109,9 @@ export async function sendDeletionScheduledEmail({
   const { data, error } = await resend.emails.send({
     from: FROM_EMAIL,
     to: email,
+
     subject: "Your AV Art Academy account deletion is scheduled",
+
     html: `
       <div
         style="
@@ -106,30 +122,36 @@ export async function sendDeletionScheduledEmail({
           color: #222;
         "
       >
-        <h2>Account Deletion Scheduled</h2>
+        <h2>
+          Account Deletion Scheduled
+        </h2>
 
         <p>
           Hi ${name || "there"},
         </p>
 
         <p>
-          Your request to delete your AV Art Academy account
-          has been confirmed.
+          Your request to delete your AV Art Academy
+          account has been confirmed.
         </p>
 
         <p>
-          Your account is scheduled for permanent deletion on:
+          Your account is scheduled for permanent
+          deletion on:
         </p>
 
-        <h3>${formattedDeletionDate}</h3>
+        <h3>
+          ${formattedDeletionDate}
+        </h3>
 
         <p>
-          You can reactivate your account any time before this date.
+          You can reactivate your account any time
+          before this date.
         </p>
 
         <p>
-          After the deletion date, the account deletion process
-          will begin and recovery will no longer be available.
+          After the deletion date,
+          the account recovery period will end.
         </p>
 
         <br />
@@ -142,6 +164,8 @@ export async function sendDeletionScheduledEmail({
   });
 
   if (error) {
+    console.error("[Email] Scheduled deletion email error:", error);
+
     throw new Error(
       error.message || "Failed to send deletion confirmation email",
     );
@@ -150,53 +174,73 @@ export async function sendDeletionScheduledEmail({
   return data;
 }
 
-export const runAccountDeletionCron = async (
-  req,
-  res,
-) => {
-  try {
-    if (
-      req.headers["x-cron-secret"] !==
-      process.env.CRON_SECRET
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized",
-      });
-    }
+/* =========================================================
+   PERMANENT ACCOUNT DELETED EMAIL
+========================================================= */
 
-    console.log(
-      "[AccountDeletionCron] Started:",
-      new Date().toISOString(),
-    );
-
-    const result =
-      await processDueAccountDeletions();
-
-    console.log(
-      "[AccountDeletionCron] Completed:",
-      result,
-    );
-
-    return res.status(200).json({
-      success: true,
-      message:
-        "Account deletion processing completed.",
-
-      found: result.found,
-      deleted: result.deleted,
-      failed: result.failed,
-    });
-  } catch (error) {
-    console.error(
-      "[AccountDeletionCron] Error:",
-      error,
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Account deletion processing failed.",
-    });
+export async function sendAccountDeletedEmail({ email, name }) {
+  if (!email) {
+    throw new Error("Account deletion email address is missing");
   }
-};
+
+  console.log(`[Email] Sending permanent deletion email to ${email}`);
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: email,
+
+    subject: "Your AV Art Academy account has been deleted",
+
+    html: `
+      <div
+        style="
+          font-family: Arial, sans-serif;
+          max-width: 600px;
+          margin: auto;
+          padding: 24px;
+          color: #222;
+        "
+      >
+        <h2>
+          Account Deleted
+        </h2>
+
+        <p>
+          Hi ${name || "there"},
+        </p>
+
+        <p>
+          Your AV Art Academy account has now been
+          permanently deleted.
+        </p>
+
+        <p>
+          Your account can no longer be recovered.
+        </p>
+
+        <p>
+          If you would like to use AV Art Academy
+          again in the future, you can create a
+          new account.
+        </p>
+
+        <br />
+
+        <p>
+          Thank you,<br />
+          AV Art Academy
+        </p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    console.error("[Email] Permanent deletion email error:", error);
+
+    throw new Error(error.message || "Failed to send account deletion email");
+  }
+
+  console.log("[Email] Permanent deletion email sent:", data);
+
+  return data;
+}
