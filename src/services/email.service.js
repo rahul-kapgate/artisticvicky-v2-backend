@@ -15,7 +15,7 @@ export const sendDailyUsersReportEmail = async ({
   reportFrom,
   reportTo,
 }) => {
-  const adminEmail = process.env.ADMIN_REPORT_EMAIL;
+  const adminEmail = process.env.ADMIN_MAIL;
 
   if (!adminEmail) {
     throw new Error("ADMIN_REPORT_EMAIL is not configured");
@@ -376,7 +376,7 @@ export const sendDailyUsersReportEmail = async ({
     `;
 
   const { data, error } = await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL,
+    from: process.env.RESEND_FROM_EMAIL || "AV Art Academy <noreply@artisticvickey.in>",
 
     to: adminEmail,
 
